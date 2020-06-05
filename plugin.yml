@@ -1,0 +1,20 @@
+name: MiniGolf
+description: Play mini golf in Minecraft!
+author: Raus
+main: com.raus.miniGolf.Main
+version: 1.0
+api-version: 1.15
+depend: [ShortUtils]
+softdepend: [CraftLib]
+
+commands:
+  minigolf:
+    description: Mini golf
+    default: true
+    usage: "Usage: /minigolf [info|reload]"
+    aliases: [golf]
+
+permissions:
+  minigolf.reload:
+    default: op
+    description: Allows you to reload the config
