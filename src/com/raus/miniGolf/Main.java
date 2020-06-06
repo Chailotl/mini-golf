@@ -49,7 +49,6 @@ import net.md_5.bungee.api.ChatColor;
 public class Main extends JavaPlugin
 {
 	private final Plugin craftLib = getServer().getPluginManager().getPlugin("CraftLib");
-	//JavaPlugin.getPlugin(CraftLib.class);
 
 	// NamespacedKeys
 	public final NamespacedKey ballKey = new NamespacedKey(this, "golf_ball");
