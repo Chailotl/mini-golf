@@ -1,4 +1,4 @@
-package com.raus.miniGolf;
+package com.chai.miniGolf;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

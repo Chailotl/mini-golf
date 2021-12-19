@@ -1,4 +1,4 @@
-package com.raus.miniGolf;
+package com.chai.miniGolf;
 
 import java.util.List;
 import java.util.Map.Entry;
@@ -25,7 +25,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
-import com.raus.shortUtils.ShortUtils;
+import com.chai.shortUtils.ShortUtils;
 
 public class PuttListener implements Listener
 {

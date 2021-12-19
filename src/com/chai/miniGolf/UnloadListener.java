@@ -1,4 +1,4 @@
-package com.raus.miniGolf;
+package com.chai.miniGolf;
 
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Snowball;

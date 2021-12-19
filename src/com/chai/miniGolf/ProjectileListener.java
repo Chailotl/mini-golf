@@ -1,4 +1,4 @@
-package com.raus.miniGolf;
+package com.chai.miniGolf;
 
 import java.util.Map.Entry;
 import java.util.UUID;

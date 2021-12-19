@@ -1,7 +1,7 @@
 name: MiniGolf
 description: Play mini golf in Minecraft!
-author: Raus
-main: com.raus.miniGolf.Main
+author: Chai
+main: com.chai.miniGolf.Main
 version: 1.0
 api-version: 1.15
 depend: [ShortUtils]
