@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 
+import com.chai.miniGolf.utils.CraftLib.CraftLib;
+import com.chai.miniGolf.utils.CraftLib.CraftingListener;
+import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -41,14 +44,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import com.chai.craftLib.CraftLib;
-import com.chai.shortUtils.ShortUtils;
-
 import net.md_5.bungee.api.ChatColor;
 
-public class Main extends JavaPlugin
-{
-	private final Plugin craftLib = getServer().getPluginManager().getPlugin("CraftLib");
+public class Main extends JavaPlugin {
+	private static Main plugin;
+	private static CraftLib craftLib = new CraftLib();
 
 	// NamespacedKeys
 	public final NamespacedKey ballKey = new NamespacedKey(this, "golf_ball");
@@ -85,6 +85,8 @@ public class Main extends JavaPlugin
 	@Override
 	public void onEnable()
 	{
+		plugin = this;
+
 		// Config
 		saveDefaultConfig();
 		reload();
@@ -96,12 +98,13 @@ public class Main extends JavaPlugin
 		getServer().getPluginManager().registerEvents(new PuttListener(), this);
 		getServer().getPluginManager().registerEvents(new ProjectileListener(), this);
 		getServer().getPluginManager().registerEvents(new UnloadListener(), this);
+		getServer().getPluginManager().registerEvents(new CraftingListener(craftLib), this);
 
 		// Iron item
 		ItemStack iron = new ItemStack(Material.IRON_HOE);
 		ItemMeta meta = iron.getItemMeta();
-		meta.setDisplayName("§rIron");
-		meta.setLore(Arrays.asList("§8A well-rounded club", "§8for longer distances."));
+		meta.setDisplayName(ChatColor.RESET + "Iron");
+		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "A well-rounded club", ChatColor.DARK_GRAY + "for longer distances."));
 		meta.setCustomModelData(2);
 		meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 		meta.addAttributeModifier(Attribute.GENERIC_ATTACK_DAMAGE, noDamage);
@@ -118,8 +121,8 @@ public class Main extends JavaPlugin
 		// Wedge item
 		ItemStack wedge = new ItemStack(Material.IRON_HOE);
 		meta = wedge.getItemMeta();
-		meta.setDisplayName("§rWedge");
-		meta.setLore(Arrays.asList("§8A specialized club", "§8for tall obstacles."));
+		meta.setDisplayName(ChatColor.RESET + "Wedge");
+		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "A specialized club", ChatColor.DARK_GRAY + "for tall obstacles."));
 		meta.setCustomModelData(3);
 		meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 		meta.addAttributeModifier(Attribute.GENERIC_ATTACK_DAMAGE, noDamage);
@@ -136,8 +139,8 @@ public class Main extends JavaPlugin
 		// Putter item
 		ItemStack putter = new ItemStack(Material.IRON_HOE);
 		meta = putter.getItemMeta();
-		meta.setDisplayName("§rPutter");
-		meta.setLore(Arrays.asList("§8A specialized club", "§8for finishing holes."));
+		meta.setDisplayName(ChatColor.RESET + "Putter");
+		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "A specialized club", ChatColor.DARK_GRAY + "for finishing holes."));
 		meta.setCustomModelData(1);
 		meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 		meta.addAttributeModifier(Attribute.GENERIC_ATTACK_DAMAGE, noDamage);
@@ -154,7 +157,7 @@ public class Main extends JavaPlugin
 		// Golf ball item
 		golfBall = new ItemStack(Material.SNOWBALL);
 		meta = golfBall.getItemMeta();
-		meta.setDisplayName("§rGolf Ball");
+		meta.setDisplayName(ChatColor.RESET + "Golf Ball");
 		meta.setCustomModelData(1);
 		ShortUtils.addKey(meta, ballKey);
 		golfBall.setItemMeta(meta);
@@ -168,8 +171,8 @@ public class Main extends JavaPlugin
 		// Whistle item
 		ItemStack whistle = new ItemStack(Material.IRON_NUGGET);
 		meta = whistle.getItemMeta();
-		meta.setDisplayName("§rGolf Whistle");
-		meta.setLore(Arrays.asList("§8Returns your last", "§8hit golf ball to its", "§8previous position."));
+		meta.setDisplayName(ChatColor.RESET + "Golf Whistle");
+		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "Returns your last", ChatColor.DARK_GRAY + "hit golf ball to its", ChatColor.DARK_GRAY + "previous position."));
 		meta.setCustomModelData(1);
 		ShortUtils.addKey(meta, whistleKey);
 		whistle.setItemMeta(meta);
@@ -180,15 +183,11 @@ public class Main extends JavaPlugin
 		Bukkit.addRecipe(recipe);
 
 		// Add keys to CraftLib if installed
-		if (craftLib != null)
-		{
-			CraftLib cl = (CraftLib) craftLib;
-			cl.addKey(ironKey);
-			cl.addKey(putterKey);
-			cl.addKey(wedgeKey);
-			cl.addKey(ballKey);
-			cl.addKey(whistleKey);
-		}
+		craftLib.addKey(ironKey);
+		craftLib.addKey(putterKey);
+		craftLib.addKey(wedgeKey);
+		craftLib.addKey(ballKey);
+		craftLib.addKey(whistleKey);
 
 		// Scheduler
 		new BukkitRunnable()
@@ -392,5 +391,9 @@ public class Main extends JavaPlugin
 	public boolean isBottomSlab(Block block)
 	{
 		return Tag.SLABS.isTagged(block.getType()) && ((Slab) block.getBlockData()).getType() == Slab.Type.BOTTOM;
+	}
+
+	public static Main getPlugin() {
+		return plugin;
 	}
 }
