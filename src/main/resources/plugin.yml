@@ -6,13 +6,18 @@ version: ${project.version}
 api-version: 1.20
 
 commands:
-  minigolf:
-    description: Mini golf
-    default: true
-    usage: "Usage: /minigolf [info|reload]"
-    aliases: [golf]
+  mgcreatecourse:
+    description: Create a Mini Golf course
+    usage: /mgcreatecourse <course_name>
+  mginfo:
+    description: Mini golf plugin info
+  mgplay:
+    description: Play a Mini golf course
+    usage: /mgplay <course_name> <optional:player_name>
+  mgreload:
+    description: Reload the configs
 
 permissions:
-  minigolf.reload:
+  mgop:
     default: op
     description: Allows you to reload the config
