@@ -25,7 +25,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
-import com.chai.shortUtils.ShortUtils;
+import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 
 public class PuttListener implements Listener
 {
