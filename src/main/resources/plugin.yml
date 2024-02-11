@@ -9,6 +9,9 @@ commands:
   mgcreatecourse:
     description: Create a Mini Golf course
     usage: /mgcreatecourse <course_name>
+  mgedit:
+    description: Edit Mini Golf courses
+    usage: /mgedit <course_name:or_edit_action>
   mginfo:
     description: Mini golf plugin info
   mgplay:

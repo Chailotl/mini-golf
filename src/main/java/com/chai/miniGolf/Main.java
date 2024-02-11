@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 import com.chai.miniGolf.commands.CreateCourseCommand;
+import com.chai.miniGolf.commands.EditCourseCommand;
 import com.chai.miniGolf.commands.InfoCommand;
 import com.chai.miniGolf.commands.PlayCommand;
 import com.chai.miniGolf.commands.ReloadCommand;
@@ -387,6 +388,7 @@ public class Main extends JavaPlugin {
 	private void registerCommands() {
 		// Register command
 		this.getCommand("mgcreatecourse").setExecutor(new CreateCourseCommand());
+		this.getCommand("mgedit").setExecutor(new EditCourseCommand());
 		this.getCommand("mginfo").setExecutor(new InfoCommand());
 		this.getCommand("mgplay").setExecutor(new PlayCommand());
 		this.getCommand("mgreload").setExecutor(new ReloadCommand());

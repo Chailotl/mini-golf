@@ -23,7 +23,7 @@ public class Course {
         return new Course(name, new ArrayList<>());
     }
 
-    public void addHole(Hole hole) {
-        this.holes.add(hole);
+    public void addHole(Hole hole, Integer index) {
+        this.holes.add(index, hole);
     }
 }

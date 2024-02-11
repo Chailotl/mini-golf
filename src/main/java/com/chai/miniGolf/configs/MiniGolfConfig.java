@@ -1,8 +1,10 @@
 package com.chai.miniGolf.configs;
 
 import com.chai.miniGolf.models.Course;
+import com.chai.miniGolf.models.Hole;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
@@ -59,17 +61,17 @@ public class MiniGolfConfig {
     }
 
     public void newCourseCreated(Course course) {
-        File file = new File(getPlugin().getDataFolder().getAbsolutePath() + File.separatorChar + courseDirectory, course.getName() + ".yml");
-        try {
-            file.getParentFile().mkdir();
-            file.createNewFile();
-            mapper.writeValue(file, course);
-            courses = loadCourses();
-        } catch (IOException e) {
-            logger().severe("Unable to save the course: " + course.getName());
-            logger().severe("Exception: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
+        saveCourse(course);
+    }
+
+    public void newHoleCreated(Course course, int index, Hole hole) {
+        course.addHole(hole, index);
+        saveCourse(course);
+    }
+
+    public void setParForHole(Course course, int holeIndex, int par) {
+        course.getHoles().get(holeIndex).setPar(par);
+        saveCourse(course);
     }
 
     private void updateOutOfDateConfig(YamlConfiguration config) {
@@ -93,5 +95,35 @@ public class MiniGolfConfig {
 
     public String scoreMsg() {
         return scoreMsg;
+    }
+
+    private void saveCourse(Course course) {
+        File file = new File(getPlugin().getDataFolder().getAbsolutePath() + File.separatorChar + courseDirectory, course.getName() + ".yml");
+        try {
+            file.getParentFile().mkdir();
+            file.createNewFile();
+            mapper.writeValue(file, course);
+            courses = loadCourses();
+        } catch (IOException e) {
+            logger().severe("Unable to save the course: " + course.getName());
+            logger().severe("Exception: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void setStartingLocation(Course course, int holeIndex, Location startingLoc) {
+        course.getHoles().get(holeIndex).setStartingLocX(startingLoc.getX());
+        course.getHoles().get(holeIndex).setStartingLocY(startingLoc.getY());
+        course.getHoles().get(holeIndex).setStartingLocZ(startingLoc.getZ());
+        course.getHoles().get(holeIndex).setStartingLocPitch(startingLoc.getPitch());
+        course.getHoles().get(holeIndex).setStartingLocYaw(startingLoc.getYaw());
+        saveCourse(course);
+    }
+
+    public void setHoleLocation(Course course, int holeIndex, Location holeLoc) {
+        course.getHoles().get(holeIndex).setHoleLocX(holeLoc.getX());
+        course.getHoles().get(holeIndex).setHoleLocY(holeLoc.getY());
+        course.getHoles().get(holeIndex).setHoleLocZ(holeLoc.getZ());
+        saveCourse(course);
     }
 }
