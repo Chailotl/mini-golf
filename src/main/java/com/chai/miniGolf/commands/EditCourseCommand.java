@@ -17,9 +17,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.stream.IntStream;
 
 import static com.chai.miniGolf.Main.getPlugin;
 import static org.bukkit.Material.CAULDRON;
@@ -89,11 +91,16 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
                 .map(courseNameArray -> String.join(" ", courseNameArray))
                 .toList();
         } else if (args.length > 0) {
+            Course course = playersEditingCourses.get(((Player)commandSender).getUniqueId());
             if (args.length == 1) {
                 return editActions.keySet().stream().filter(a -> a.startsWith(args[0].toLowerCase())).toList();
+            } else if (args.length == 2 && "addhole".equals(args[0])) {
+                return IntStream.range(0, course.getHoles().size()+1).boxed().map(String::valueOf).toList();
+            } else if (args.length == 2 && List.of("setpar", "setstartinglocation", "setholelocation").contains(args[0]) && !course.getHoles().isEmpty()) {
+                return IntStream.range(0, course.getHoles().size()).boxed().map(String::valueOf).toList();
             }
         }
-        return null;
+        return List.of();
     }
 
     private static Boolean addHole(String[] args, Player sender) {

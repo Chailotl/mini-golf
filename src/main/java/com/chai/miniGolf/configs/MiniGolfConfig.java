@@ -10,9 +10,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import static com.chai.miniGolf.Main.getPlugin;
@@ -93,8 +91,10 @@ public class MiniGolfConfig {
         }
     }
 
-    public String scoreMsg() {
-        return scoreMsg;
+    public String scoreMsg(String v1, String v2) {
+        return scoreMsg
+            .replaceAll("&v1", v1)
+            .replaceAll("&v2", v2);
     }
 
     private void saveCourse(Course course) {

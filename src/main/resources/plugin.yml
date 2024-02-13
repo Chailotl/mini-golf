@@ -19,6 +19,8 @@ commands:
     usage: /mgplay <course_name> <optional:player_name>
   mgreload:
     description: Reload the configs
+  tc:
+    description: For testing
 
 permissions:
   mgop:
