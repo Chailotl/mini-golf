@@ -32,6 +32,7 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
         "addhole", EditCourseCommand::addHole,
         "setpar", EditCourseCommand::setPar,
         "setstartinglocation", EditCourseCommand::setStartingLocation,
+        "setstartingballlocation", EditCourseCommand::setStartingBallLocation,
         "setholelocation", EditCourseCommand::setHoleLocation,
         "doneediting", EditCourseCommand::doneEditing
     );
@@ -119,7 +120,7 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
         }
         sender.sendMessage(String.format("%s[MiniGolf] Adding hole at index %s, any holes behind will be pushed back an index%s", ChatColor.WHITE, newHoleIndex, ChatColor.RESET));
         Location startingLoc = sender.getLocation();
-        getPlugin().config().newHoleCreated(playersEditingCourses.get(sender.getUniqueId()), newHoleIndex, Hole.newHole(1, startingLoc, startingLoc));
+        getPlugin().config().newHoleCreated(playersEditingCourses.get(sender.getUniqueId()), newHoleIndex, Hole.newHole(1, startingLoc, startingLoc, startingLoc));
         return true;
     }
 
@@ -167,6 +168,29 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
         Location startingLoc = sender.getLocation();
         sender.sendMessage(String.format("%s[MiniGolf] Setting Starting Location for hole %s to your current location%s", ChatColor.WHITE, holeIndex, ChatColor.RESET));
         getPlugin().config().setStartingLocation(course, holeIndex, startingLoc);
+        return true;
+    }
+
+    private static Boolean setStartingBallLocation(String[] args, Player sender) {
+        if (args.length < 1) {
+            sender.sendMessage(ChatColor.WHITE + "[MiniGolf]" + ChatColor.RED + " Must provide a hole index to set the starting hole location for. Like this: \"/mgedit setstartingholelocation 2\".");
+            return true;
+        }
+        int holeIndex;
+        try {
+            holeIndex = Integer.parseInt(args[0]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(ChatColor.WHITE + "[MiniGolf]" + ChatColor.RED + args[0] + " is not a valid Hole index.");
+            return true;
+        }
+        Course course = playersEditingCourses.get(sender.getUniqueId());
+        if (holeIndex < 0 || holeIndex >= course.getHoles().size()) {
+            sender.sendMessage(String.format("%s[MiniGolf]%s %s is an index out of bounds (remember indices start at 0). There are %s holes.%s", ChatColor.WHITE, ChatColor.RED, holeIndex, course.getHoles().size(), ChatColor.RESET));
+            return true;
+        }
+        Location startingBallLoc = sender.getLocation();
+        sender.sendMessage(String.format("%s[MiniGolf] Setting Starting ball Location for hole %s to your current location%s", ChatColor.WHITE, holeIndex, ChatColor.RESET));
+        getPlugin().config().setBallStartingLocation(course, holeIndex, startingBallLoc);
         return true;
     }
 

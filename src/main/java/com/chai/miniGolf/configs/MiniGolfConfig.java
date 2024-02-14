@@ -4,13 +4,17 @@ import com.chai.miniGolf.models.Course;
 import com.chai.miniGolf.models.Hole;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import lombok.Getter;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.chai.miniGolf.Main.getPlugin;
@@ -22,6 +26,9 @@ public class MiniGolfConfig {
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     private final YamlConfiguration originalConfig;
     private List<Course> courses;
+    @Getter private Map<String, ClubPower> clubPowerMap;
+    @Getter private Double friction;
+    @Getter private Double sandFriction;
     private String scoreMsg;
 
     public MiniGolfConfig(YamlConfiguration config) {
@@ -32,7 +39,31 @@ public class MiniGolfConfig {
 
     private void loadConfig(YamlConfiguration config) {
         scoreMsg = config.getString("scoreMsg", originalConfig.getString("scoreMsg"));
+        clubPowerMap = new HashMap<>();
+        clubPowerMap.put(getPlugin().putterKey.getKey(), loadClubPower(config, getPlugin().putterKey.getKey()));
+        clubPowerMap.put(getPlugin().wedgeKey.getKey(), loadClubPower(config, getPlugin().wedgeKey.getKey()));
+        clubPowerMap.put(getPlugin().ironKey.getKey(), loadClubPower(config, getPlugin().ironKey.getKey()));
+        friction = config.getDouble("friction", originalConfig.getDouble("friction"));
+        sandFriction = config.getDouble("sand_friction", originalConfig.getDouble("sand_friction"));
         courses = loadCourses();
+    }
+
+    private ClubPower loadClubPower(YamlConfiguration config, String club) {
+        String clubPowerPrefix = "club_power." + club + ".";
+        return ClubPower.builder()
+            .minPowerSneaking(config.getDouble(clubPowerPrefix + "min_power_sneaking", originalConfig.getDouble(clubPowerPrefix + "min_power_sneaking")))
+            .minYPowerSneaking(config.getDouble(clubPowerPrefix + "min_y_power_sneaking", originalConfig.getDouble(clubPowerPrefix + "min_y_power_sneaking")))
+            .maxPowerSneaking(config.getDouble(clubPowerPrefix + "max_power_sneaking", originalConfig.getDouble(clubPowerPrefix + "max_power_sneaking")))
+            .maxYPowerSneaking(config.getDouble(clubPowerPrefix + "max_y_power_sneaking", originalConfig.getDouble(clubPowerPrefix + "max_y_power_sneaking")))
+            .minPowerStanding(config.getDouble(clubPowerPrefix + "min_power_standing", originalConfig.getDouble(clubPowerPrefix + "min_power_standing")))
+            .minYPowerStanding(config.getDouble(clubPowerPrefix + "min_y_power_standing", originalConfig.getDouble(clubPowerPrefix + "min_y_power_standing")))
+            .maxPowerStanding(config.getDouble(clubPowerPrefix + "max_power_standing", originalConfig.getDouble(clubPowerPrefix + "max_power_standing")))
+            .maxYPowerStanding(config.getDouble(clubPowerPrefix + "max_y_power_standing", originalConfig.getDouble(clubPowerPrefix + "max_y_power_standing")))
+            .minPowerCrit(config.getDouble(clubPowerPrefix + "min_power_crit", originalConfig.getDouble(clubPowerPrefix + "min_power_crit")))
+            .minYPowerCrit(config.getDouble(clubPowerPrefix + "min_y_power_crit", originalConfig.getDouble(clubPowerPrefix + "min_y_power_crit")))
+            .maxPowerCrit(config.getDouble(clubPowerPrefix + "max_power_crit", originalConfig.getDouble(clubPowerPrefix + "max_power_crit")))
+            .maxYPowerCrit(config.getDouble(clubPowerPrefix + "max_y_power_crit", originalConfig.getDouble(clubPowerPrefix + "max_y_power_crit")))
+            .build();
     }
 
     private List<Course> loadCourses() {
@@ -91,10 +122,12 @@ public class MiniGolfConfig {
         }
     }
 
-    public String scoreMsg(String v1, String v2) {
-        return scoreMsg
-            .replaceAll("&v1", v1)
-            .replaceAll("&v2", v2);
+    public String scoreMsg(String v1, String v2, String v3) {
+        return ChatColor.translateAlternateColorCodes('&',
+            scoreMsg
+                .replaceAll("&v1", v1)
+                .replaceAll("&v2", v2)
+                .replaceAll("&v3", v3));
     }
 
     private void saveCourse(Course course) {
@@ -117,6 +150,13 @@ public class MiniGolfConfig {
         course.getHoles().get(holeIndex).setStartingLocZ(startingLoc.getZ());
         course.getHoles().get(holeIndex).setStartingLocPitch(startingLoc.getPitch());
         course.getHoles().get(holeIndex).setStartingLocYaw(startingLoc.getYaw());
+        saveCourse(course);
+    }
+
+    public void setBallStartingLocation(Course course, int holeIndex, Location startingBallLoc) {
+        course.getHoles().get(holeIndex).setBallStartingLocX(startingBallLoc.getX());
+        course.getHoles().get(holeIndex).setBallStartingLocY(startingBallLoc.getY());
+        course.getHoles().get(holeIndex).setBallStartingLocZ(startingBallLoc.getZ());
         saveCourse(course);
     }
 

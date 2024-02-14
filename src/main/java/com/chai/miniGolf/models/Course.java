@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
@@ -28,6 +29,7 @@ import static com.chai.miniGolf.Main.logger;
 public class Course {
     private String name;
     private List<Hole> holes;
+    // TODO: Course Leaderboards
     @JsonIgnore
     private Map<UUID, Integer> playersAndTheirCurrentHole;
 
@@ -48,6 +50,15 @@ public class Course {
     public Snowball playerStartedCourse(Player p) {
         playersAndTheirCurrentHole.put(p.getUniqueId(), -1);
         return playerMovingToNextHole(p);
+    }
+
+    @JsonIgnore
+    public Block getCurrentHoleCauldronBlock(UUID pUuid) {
+        return holes.get(playersAndTheirCurrentHole.get(pUuid)).getHoleBlock();
+    }
+
+    public int playersCurrentHole(UUID pUuid) {
+        return playersAndTheirCurrentHole.get(pUuid);
     }
 
     public void playerCompletedHole(Player p, int score) {
@@ -85,7 +96,7 @@ public class Course {
         c.set(getPlugin().yKey, PersistentDataType.DOUBLE, loc.getY());
         c.set(getPlugin().zKey, PersistentDataType.DOUBLE, loc.getZ());
         c.set(getPlugin().strokesKey, PersistentDataType.INTEGER, 0);
-        ball.setCustomName("Par 0");
+        ball.setCustomName("Stroke 0");
         ball.setCustomNameVisible(true);
         return ball;
     }
@@ -100,6 +111,13 @@ public class Course {
     public void playerCompletedCourse(Player p) {
         System.out.printf("%s just finished %s with a score of %s%n", p.getName(), name, playerTotalScore(p));
         Bukkit.getPluginManager().callEvent(new CourseCompletedEvent(p, this, playerTotalScore(p)));
+        playersAndTheirCurrentHole.remove(p.getUniqueId());
+    }
+
+    public void playerQuit(Player p) {
+        holes.stream()
+            .filter(h -> h.playersScore(p) != null)
+            .forEach(h -> h.playerDoneWithCourse(p));
         playersAndTheirCurrentHole.remove(p.getUniqueId());
     }
 }

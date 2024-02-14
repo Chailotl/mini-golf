@@ -34,8 +34,14 @@ public class ProjectileListener implements Listener
 			// Check if golf ball
 			PersistentDataContainer c = ent.getPersistentDataContainer();
 			Optional<GolfingInfo> golfingInfo = getPlugin().golfingCourseManager().getGolfingInfoFromGolfball((Snowball) ent);
-			if (!c.has(plugin.strokesKey, PersistentDataType.INTEGER) || golfingInfo.isEmpty())
+			if (!c.has(plugin.strokesKey, PersistentDataType.INTEGER) || golfingInfo.isEmpty()) {
+				return;
+			}
+
+			// Golf ball hit entity
+			if (event.getHitBlockFace() == null)
 			{
+				event.setCancelled(true);
 				return;
 			}
 
@@ -63,16 +69,6 @@ public class ProjectileListener implements Listener
 			b.set(plugin.xKey, PersistentDataType.DOUBLE, x);
 			b.set(plugin.yKey, PersistentDataType.DOUBLE, y);
 			b.set(plugin.zKey, PersistentDataType.DOUBLE, z);
-
-			// Golf ball hit entity
-			if (event.getHitBlockFace() == null)
-			{
-				// Move ball to last location
-				ball.setVelocity(new Vector(0, 0, 0));
-				ball.teleport(new Location(world, x, y, z));
-				ball.setGravity(false);
-				return;
-			}
 
 			// Bounce off surfaces
 			Material mat = event.getHitBlock().getType();

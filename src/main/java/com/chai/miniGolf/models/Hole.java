@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -23,13 +24,16 @@ public class Hole {
     private Double startingLocZ;
     private Float startingLocYaw;
     private Float startingLocPitch;
+    private Double ballStartingLocX;
+    private Double ballStartingLocY;
+    private Double ballStartingLocZ;
     private Double holeLocX;
     private Double holeLocY;
     private Double holeLocZ;
     @JsonIgnore
     private Map<UUID, Integer> playerScores;
 
-    public static Hole newHole(Integer par, Location startingLoc, Location hole) {
+    public static Hole newHole(Integer par, Location startingLoc, Location ballStartingLoc, Location hole) {
         return Hole.builder()
             .par(par)
             .worldUuid(startingLoc.getWorld().getUID().toString())
@@ -38,6 +42,9 @@ public class Hole {
             .startingLocZ(startingLoc.getZ())
             .startingLocYaw(startingLoc.getYaw())
             .startingLocPitch(startingLoc.getPitch())
+            .ballStartingLocX(startingLoc.getX())
+            .ballStartingLocY(startingLoc.getY())
+            .ballStartingLocZ(startingLoc.getZ())
             .holeLocX(hole.getX())
             .holeLocY(hole.getY())
             .holeLocZ(hole.getZ())
@@ -49,6 +56,11 @@ public class Hole {
         return new Location(Bukkit.getWorld(UUID.fromString(worldUuid)), startingLocX, startingLocY, startingLocZ, startingLocYaw, startingLocPitch);
     }
 
+    @JsonIgnore
+    public Block getHoleBlock() {
+        return new Location(Bukkit.getWorld(UUID.fromString(worldUuid)), holeLocX, holeLocY, holeLocZ).getBlock();
+    }
+
     public void playerStartedPlayingHole(Player p) {
         playerScores().put(p.getUniqueId(), -1);
     }
@@ -57,15 +69,16 @@ public class Hole {
         playerScores().put(p.getUniqueId(), score);
     }
 
-    public void playerFinishedCourse(Player p) {
+    public void playerDoneWithCourse(Player p) {
         playerScores().remove(p.getUniqueId());
+        System.out.println("Player scores: " + playerScores);
     }
 
     public boolean hasPlayerFinishedHole(Player p) {
         return playerScores().get(p.getUniqueId()) > -1;
     }
 
-    public int playersScore(Player p) {
+    public Integer playersScore(Player p) {
         return playerScores().get(p.getUniqueId());
     }
 

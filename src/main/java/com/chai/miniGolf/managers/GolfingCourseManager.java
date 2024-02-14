@@ -19,6 +19,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -42,13 +43,20 @@ public class GolfingCourseManager implements Listener {
         if (golfers.isEmpty()) {
             startGolfBallPhysicsTask();
         }
+        GolfingInfo golfersOldShtuff = golfers.get(event.golfer().getUniqueId());
+        if (golfersOldShtuff != null && golfersOldShtuff.getGolfball() != null) {
+            golfersOldShtuff.getGolfball().remove();
+        }
         golfers.put(event.golfer().getUniqueId(),
             GolfingInfo.builder()
                 .course(event.course())
                 .golfball(event.course().playerStartedCourse(event.golfer()))
                 .build()
             );
-        // TODO: Give player clubs
+        event.golfer().getInventory().clear();
+        event.golfer().getInventory().addItem(getPlugin().ironItemStack());
+        event.golfer().getInventory().addItem(getPlugin().wedgeItemStack());
+        event.golfer().getInventory().addItem(getPlugin().putterItemStack());
     }
 
     @EventHandler
@@ -67,6 +75,19 @@ public class GolfingCourseManager implements Listener {
         golfers.remove(event.golfer().getUniqueId());
         if (golfers.isEmpty()) {
             golfballPhysicsTask.cancel();
+        }
+    }
+
+    @EventHandler
+    private void onPlayerQuit(PlayerQuitEvent event) {
+        GolfingInfo golfingInfo = golfers.get(event.getPlayer().getUniqueId());
+        if (golfingInfo != null) {
+            golfingInfo.getGolfball().remove();
+            golfingInfo.getCourse().playerQuit(event.getPlayer());
+            golfers.remove(event.getPlayer().getUniqueId());
+            if (golfers.isEmpty()) {
+                golfballPhysicsTask.cancel();
+            }
         }
     }
 
@@ -104,28 +125,12 @@ public class GolfingCourseManager implements Listener {
         if (!ball.isValid()) {
             return false;
         }
-        if (ball.getTicksLived() > 1200) {
-            ball.getWorld().dropItem(ball.getLocation(), getPlugin().golfBallItemStack());
-            ball.remove();
-            return false;
-        }
         Location loc = ball.getLocation();
         Block block = loc.subtract(0, 0.1, 0).getBlock();
         Vector vel = ball.getVelocity();
         switch (block.getType()) {
             case CAULDRON:
-                if (handleCauldronAndDecideIfSuccessfullyCompletedHole(ball, vel, golfer.getKey())) {
-                    Bukkit.getPluginManager().callEvent(
-                        new HoleCompletedEvent(
-                            Bukkit.getPlayer(golfer.getKey()),
-                            golfer.getValue().getCourse(),
-                            ball.getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER)
-                        )
-                    );
-                    return false; // Kill the ball!
-                } else {
-                    return true; // Keep the ball if it didn't go in the hole cuz it was too fast
-                }
+                return !handleCauldronAndDecideIfSuccessfullyCompletedHole(ball, vel, block, golfer); // Kill the ball if it went in a hole
             case SOUL_SAND:
                 ball.setVelocity(new Vector(0, ball.getVelocity().getY(), 0));
                 break;
@@ -144,7 +149,7 @@ public class GolfingCourseManager implements Listener {
             case SAND:
             case RED_SAND:
                 // Friction
-                vel.multiply(0.9);
+                vel.multiply(getPlugin().config().getSandFriction());
                 ball.setVelocity(vel);
                 break;
             case MAGENTA_GLAZED_TERRACOTTA:
@@ -158,17 +163,16 @@ public class GolfingCourseManager implements Listener {
                 }
 
                 // Slight friction
-                vel.multiply(0.975);
+                vel.multiply(getPlugin().config().getFriction());
                 ball.setVelocity(vel);
                 break;
         }
         return true;
     }
 
-    private boolean handleCauldronAndDecideIfSuccessfullyCompletedHole(Snowball ball, Vector vel, UUID golfer) {
-        // Check if golf ball is too fast
-        if (vel.getY() >= 0 && vel.length() > 0.34)
-        {
+    private boolean handleCauldronAndDecideIfSuccessfullyCompletedHole(Snowball ball, Vector vel, Block cauldron, Map.Entry<UUID, GolfingInfo> golfer) {
+        // Check if golf ball is too fast or is wrong hole cauldron
+        if ((vel.getY() >= 0 && vel.length() > 0.34) || !cauldron.equals(golfer.getValue().getCourse().getCurrentHoleCauldronBlock(golfer.getKey()))) {
             return false;
         }
 
@@ -182,9 +186,18 @@ public class GolfingCourseManager implements Listener {
 
         // Send message
         int par = ball.getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER);
-        Player p = Bukkit.getPlayer(golfer);
-        String msg = getPlugin().config().scoreMsg(p.getName(), Integer.toString(par));
+        Player p = Bukkit.getPlayer(golfer.getKey());
+        String msg = getPlugin().config().scoreMsg(p.getName(), String.valueOf(golfer.getValue().getCourse().playersCurrentHole(golfer.getKey()) + 1), Integer.toString(par));
         p.sendMessage(msg);
+
+        // Let any listeners know that a hole was just completed
+        Bukkit.getPluginManager().callEvent(
+            new HoleCompletedEvent(
+                Bukkit.getPlayer(golfer.getKey()),
+                golfer.getValue().getCourse(),
+                ball.getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER)
+            )
+        );
         return true;
     }
 

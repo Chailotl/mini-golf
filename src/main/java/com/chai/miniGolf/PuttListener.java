@@ -1,5 +1,7 @@
 package com.chai.miniGolf;
 
+import com.chai.miniGolf.configs.ClubPower;
+import com.chai.miniGolf.managers.GolfingCourseManager.GolfingInfo;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -22,9 +24,10 @@ import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import static com.chai.miniGolf.Main.getPlugin;
 
 public class PuttListener implements Listener {
+	private static final double playerInteractRange = 5.4;
+
 	@EventHandler
-	public void onPutt(PlayerInteractEvent event)
-	{
+	public void onPutt(PlayerInteractEvent event) {
 		ItemStack item = event.getItem();
 		if (ShortUtils.interacting(event) || item == null || !(event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK)) {
 			return;
@@ -37,8 +40,16 @@ public class PuttListener implements Listener {
 		boolean putter = ShortUtils.hasKey(meta, getPlugin().putterKey);
 		boolean iron = ShortUtils.hasKey(meta, getPlugin().ironKey);
 		boolean wedge = ShortUtils.hasKey(meta, getPlugin().wedgeKey);
+		ClubPower clubPower = null;
+		if (putter) {
+			clubPower = getPlugin().config().getClubPowerMap().get(getPlugin().putterKey.getKey());
+		} else if (wedge) {
+			clubPower = getPlugin().config().getClubPowerMap().get(getPlugin().wedgeKey.getKey());
+		} else if (iron) {
+			clubPower = getPlugin().config().getClubPowerMap().get(getPlugin().ironKey.getKey());
+		}
 
-		if (putter || iron || wedge) {
+		if (clubPower != null) {
 			// Cancel original tool
 			ShortUtils.cancelOriginalTool(event);
 
@@ -46,7 +57,11 @@ public class PuttListener implements Listener {
 			Vector dir = eye.getDirection();
 			Vector loc = eye.toVector();
 
-			Snowball ball = getPlugin().golfingCourseManager().getGolfingInfo(p).getGolfball();
+			GolfingInfo golfingInfo = getPlugin().golfingCourseManager().getGolfingInfo(p);
+			if (golfingInfo == null || golfingInfo.getGolfball() == null) {
+				return; // Player doesn't have a ball
+			}
+			Snowball ball = golfingInfo.getGolfball();
 			if (!isWithinInteractableRange(ball.getLocation(), p.getEyeLocation(), 5.5)) {
 				return;
 			}
@@ -57,23 +72,17 @@ public class PuttListener implements Listener {
 			}
 
 			// Hit golf ball
+			Double distanceFromBall = p.getLocation().distance(ball.getLocation());
+			Double swingWindUpProportion = distanceFromBall > playerInteractRange ? 1.0 : distanceFromBall / playerInteractRange;
+			Double power = ((clubPower.maxPowerForPlayer(p) - clubPower.minPowerForPlayer(p)) * swingWindUpProportion) + clubPower.minPowerForPlayer(p);
+			Double yPower = ((clubPower.maxYPowerForPlayer(p) - clubPower.minYPowerForPlayer(p)) * swingWindUpProportion) + clubPower.minYPowerForPlayer(p);
 			dir.setY(0).normalize();
-			boolean crit = p.getVelocity().getY() < -0.08;
-			if (iron) {
-				dir.multiply(crit ? 1 : p.isSneaking() ? 0.6666 : 0.8333);
-			}
-			else if (putter) {
-				dir.multiply(crit ? 0.5 : p.isSneaking() ? 0.1666 : 0.3333);
-			}
-			else if (wedge) {
-				dir.multiply(crit ? 0 : p.isSneaking() ? 0.125 : 0.25);
-				dir.setY(0.15);
-			}
-
+			dir.multiply(power);
+			dir.setY(yPower);
 			ball.setVelocity(dir);
-			PersistentDataContainer c = ball.getPersistentDataContainer();
 
-			// Update par
+			// Update strokes
+			PersistentDataContainer c = ball.getPersistentDataContainer();
 			int strokes = c.get(getPlugin().strokesKey, PersistentDataType.INTEGER) + 1;
 			c.set(getPlugin().strokesKey, PersistentDataType.INTEGER, strokes);
 			ball.setCustomName("Strokes: " + strokes);
@@ -88,7 +97,8 @@ public class PuttListener implements Listener {
 			//plugin.golfBalls.add((Snowball) ent); TODO: why was this being added again?
 			ball.setTicksLived(1);
 
-			// Effects
+			// Crit effect
+			boolean crit = p.getVelocity().getY() < -0.08;
 			if (crit) {
 				world.spawnParticle(Particle.CRIT, ball.getLocation(), 15, 0, 0, 0, 0.25);
 			}

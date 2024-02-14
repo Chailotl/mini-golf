@@ -38,7 +38,7 @@ public class Main extends JavaPlugin {
 	private static CraftLib craftLib = new CraftLib();
 	private static MiniGolfConfig config;
 
-	// NamespacedKeys
+	// NamespacedKeys (also used in the config.yml. Don't change these names punk)
 	public final NamespacedKey ballKey = new NamespacedKey(this, "golf_ball");
 	public final NamespacedKey putterKey = new NamespacedKey(this, "putter");
 	public final NamespacedKey ironKey = new NamespacedKey(this, "iron");
@@ -59,6 +59,9 @@ public class Main extends JavaPlugin {
 
 	// Items
 	private ItemStack golfBall;
+	private ItemStack putter;
+	private ItemStack wedge;
+	private ItemStack iron;
 
 	// Managers
 	private final GolfingCourseManager golfingCourseManager = new GolfingCourseManager();
@@ -78,7 +81,7 @@ public class Main extends JavaPlugin {
 
 	private void registerItems() {
 		// Iron item
-		ItemStack iron = new ItemStack(Material.IRON_HOE);
+		iron = new ItemStack(Material.IRON_HOE);
 		ItemMeta meta = iron.getItemMeta();
 		meta.setDisplayName(ChatColor.RESET + "Iron");
 		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "A well-rounded club", ChatColor.DARK_GRAY + "for longer distances."));
@@ -96,7 +99,7 @@ public class Main extends JavaPlugin {
 		Bukkit.addRecipe(recipe);
 
 		// Wedge item
-		ItemStack wedge = new ItemStack(Material.IRON_HOE);
+		wedge = new ItemStack(Material.IRON_HOE);
 		meta = wedge.getItemMeta();
 		meta.setDisplayName(ChatColor.RESET + "Wedge");
 		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "A specialized club", ChatColor.DARK_GRAY + "for tall obstacles."));
@@ -114,7 +117,7 @@ public class Main extends JavaPlugin {
 		Bukkit.addRecipe(recipe);
 
 		// Putter item
-		ItemStack putter = new ItemStack(Material.IRON_HOE);
+		putter = new ItemStack(Material.IRON_HOE);
 		meta = putter.getItemMeta();
 		meta.setDisplayName(ChatColor.RESET + "Putter");
 		meta.setLore(Arrays.asList(ChatColor.DARK_GRAY + "A specialized club", ChatColor.DARK_GRAY + "for finishing holes."));
@@ -207,6 +210,18 @@ public class Main extends JavaPlugin {
 
 	public ItemStack golfBallItemStack() {
 		return golfBall;
+	}
+
+	public ItemStack ironItemStack() {
+		return iron;
+	}
+
+	public ItemStack wedgeItemStack() {
+		return wedge;
+	}
+
+	public ItemStack putterItemStack() {
+		return putter;
 	}
 
 	public static Main getPlugin() {
