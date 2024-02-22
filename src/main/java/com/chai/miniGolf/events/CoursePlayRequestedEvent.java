@@ -13,7 +13,6 @@ public class CoursePlayRequestedEvent extends Event {
     private final Course course;
 
     public CoursePlayRequestedEvent(Player golfer, Course course) {
-        System.out.println(String.format("CoursePlayRequestedEvent created for %s on course %s", golfer.getName(), course.getName()));
         this.golfer = golfer;
         this.course = course;
     }

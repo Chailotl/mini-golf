@@ -14,7 +14,6 @@ public class HoleCompletedEvent extends Event {
     private final int score;
 
     public HoleCompletedEvent(Player golfer, Course course, int score) {
-        System.out.println(String.format("HoleCompletedEvent created for %s on course %s", golfer.getName(), course.getName()));
         this.golfer = golfer;
         this.course = course;
         this.score = score;

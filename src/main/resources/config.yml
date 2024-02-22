@@ -1,5 +1,6 @@
 # Message for when you score a hole
 scoreMsg: '&4&v1 &6completed hole &v2 in &c&v3&6 strokes.'
+courseCompletedMsg: "&6You've finished &4&v1 (Par &v2)&6 with a score of &v3"
 # Friction is like a velocity multiplier, so lower friction is "stronger" friction. Don't put something >= 1 or the ball will never stop
 friction: 0.975
 sand_friction: 0.9

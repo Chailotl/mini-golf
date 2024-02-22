@@ -4,11 +4,15 @@ author: Chai
 main: com.chai.miniGolf.Main
 version: ${project.version}
 api-version: 1.20
+softdepend: [PlaceholderAPI]
 
 commands:
   mgcreatecourse:
     description: Create a Mini Golf course
     usage: /mgcreatecourse <course_name>
+  mgdeletecourse:
+    description: Delete a Mini Golf course
+    usage: /mgdeletecourse <course_name>
   mgedit:
     description: Edit Mini Golf courses
     usage: /mgedit <course_name:or_edit_action>
@@ -19,8 +23,6 @@ commands:
     usage: /mgplay <course_name> <optional:player_name>
   mgreload:
     description: Reload the configs
-  tc:
-    description: For testing
 
 permissions:
   mgop:

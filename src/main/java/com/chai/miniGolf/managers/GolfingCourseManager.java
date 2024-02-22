@@ -5,23 +5,29 @@ import com.chai.miniGolf.events.CoursePlayRequestedEvent;
 import com.chai.miniGolf.events.HoleCompletedEvent;
 import com.chai.miniGolf.events.NextHoleRequestedEvent;
 import com.chai.miniGolf.models.Course;
+import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import lombok.Builder;
 import lombok.Data;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Directional;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.meta.FireworkMeta;
-import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
@@ -33,10 +39,12 @@ import java.util.UUID;
 
 import static com.chai.miniGolf.Main.getPlugin;
 import static com.chai.miniGolf.utils.SharedMethods.isBottomSlab;
+import static org.bukkit.persistence.PersistentDataType.DOUBLE;
+import static org.bukkit.persistence.PersistentDataType.INTEGER;
 
 public class GolfingCourseManager implements Listener {
     private final Map<UUID, GolfingInfo> golfers = new HashMap<>();
-    private BukkitTask golfballPhysicsTask; // TODO: cancel this when someone quits and the golfers map is empty again
+    private BukkitTask golfballPhysicsTask;
 
     @EventHandler
     private void startPlayingCourse(CoursePlayRequestedEvent event) {
@@ -54,9 +62,14 @@ public class GolfingCourseManager implements Listener {
                 .build()
             );
         event.golfer().getInventory().clear();
-        event.golfer().getInventory().addItem(getPlugin().ironItemStack());
-        event.golfer().getInventory().addItem(getPlugin().wedgeItemStack());
-        event.golfer().getInventory().addItem(getPlugin().putterItemStack());
+        event.golfer().getInventory().setItem(0, getPlugin().ironItemStack());
+        event.golfer().getInventory().setItem(1, getPlugin().wedgeItemStack());
+        event.golfer().getInventory().setItem(2, getPlugin().putterItemStack());
+        event.golfer().getInventory().setItem(4, getPlugin().whistleItemStack());
+        event.golfer().getInventory().setItem(5, getPlugin().nextHoleItemItemStack());
+        event.golfer().getInventory().setItem(6, getPlugin().scorecardItemStack());
+        event.golfer().getInventory().setItem(8, getPlugin().quitItemItemStack());
+        cleanUpAnyUnusedBalls(event.golfer());
     }
 
     @EventHandler
@@ -65,26 +78,90 @@ public class GolfingCourseManager implements Listener {
     }
 
     @EventHandler
-    private void nextHoleRequested(NextHoleRequestedEvent event) {
-        golfers.get(event.golfer().getUniqueId())
-            .setGolfball(event.course().playerMovingToNextHole(event.golfer()));
+    private void golfingItemUsed(PlayerInteractEvent event) {
+        GolfingCourseManager.GolfingInfo golferInfo = getGolfingInfo(event.getPlayer());
+        if (golferInfo == null
+            || !(event.getAction().equals(Action.RIGHT_CLICK_AIR) || event.getAction().equals(Action.RIGHT_CLICK_BLOCK))
+            || event.getItem() == null
+            || event.getItem().getItemMeta() == null) {
+            return;
+        }
+        if (ShortUtils.hasKey(event.getItem().getItemMeta(), getPlugin().nextHoleItemKey) && event.getPlayer().getCooldown(getPlugin().nextHoleItemItemStack().getType()) == 0) {
+            Bukkit.getPluginManager().callEvent(new NextHoleRequestedEvent(event.getPlayer(), golferInfo.getCourse()));
+            event.getPlayer().setCooldown(getPlugin().nextHoleItemItemStack().getType(), 10);
+            event.setCancelled(true);
+        } else if (ShortUtils.hasKey(event.getItem().getItemMeta(), getPlugin().quitItemKey)) {
+            playerDoneWithCurrentCourse(event.getPlayer());
+            event.setCancelled(true);
+        } else if (ShortUtils.hasKey(event.getItem().getItemMeta(), getPlugin().whistleKey)) {
+            event.getPlayer().getWorld().playSound(event.getPlayer().getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.9f, 1.9f);
+            returnBallToLastLoc(event.getPlayer().getUniqueId());
+            event.setCancelled(true);
+        }
+    }
+
+    private void returnBallToLastLoc(UUID pUuid) {
+        GolfingInfo golfingInfo = golfers.get(pUuid);
+        if (golfingInfo == null || golfingInfo.getGolfball() == null) {
+            if (Bukkit.getPlayer(pUuid) != null) {
+                Bukkit.getPlayer(pUuid).sendMessage("Could not find a golfball to return.");
+            }
+            return;
+        }
+        PersistentDataContainer c = golfingInfo.getGolfball().getPersistentDataContainer();
+        int strokes = c.get(getPlugin().strokesKey, INTEGER) + 1;
+        c.set(getPlugin().strokesKey, INTEGER, strokes);
+        golfingInfo.getGolfball().setCustomName("Strokes: " + strokes);
+        golfingInfo.getGolfball().setVelocity(new Vector(0, 0, 0));
+        golfingInfo.getGolfball().teleport(new Location(golfingInfo.getGolfball().getWorld(), c.get(getPlugin().xKey, DOUBLE), c.get(getPlugin().yKey, DOUBLE), c.get(getPlugin().zKey, DOUBLE)));
+        golfingInfo.getGolfball().setGravity(false);
+    }
+
+    public void returnBallToLastLoc(Snowball ball) {
+        getPUuidFromGolfball(ball).ifPresent(this::returnBallToLastLoc);
     }
 
     @EventHandler
-    private void courseCompleted(CourseCompletedEvent event) {
-        golfers.remove(event.golfer().getUniqueId());
-        if (golfers.isEmpty()) {
-            golfballPhysicsTask.cancel();
+    private void nextHoleRequested(NextHoleRequestedEvent event) {
+        GolfingCourseManager.GolfingInfo golferInfo = getGolfingInfo(event.golfer());
+        if (golferInfo == null || !golferInfo.getCourse().equals(event.course())) {
+            return;
+        }
+        Course course = event.course();
+        Player p = event.golfer();
+        if (course.getHoles().get(course.playersCurrentHole(p.getUniqueId())).hasPlayerFinishedHole(p)) {
+            golfers.get(event.golfer().getUniqueId())
+                .setGolfball(event.course().playerMovingToNextHole(event.golfer()));
+            cleanUpAnyUnusedBalls(event.golfer());
+        } else {
+            p.sendMessage(String.format("%sYou cannot go to the next hole until you complete this one.%s", ChatColor.GRAY, ChatColor.RESET));
         }
     }
 
     @EventHandler
+    private void courseCompleted(CourseCompletedEvent event) {
+        ChatColor scoreColor = event.totalScore() == event.course().totalPar() ? ChatColor.WHITE : event.totalScore() < event.course().totalPar() ? ChatColor.GREEN : ChatColor.RED;
+        event.golfer().sendMessage(getPlugin().config().courseCompletedMsg(event.course().getName(), String.valueOf(event.course().totalPar()), String.format("%s%s", scoreColor, event.totalScore())));
+        playerDoneWithCurrentCourse(event.golfer());
+    }
+
+    @EventHandler
     private void onPlayerQuit(PlayerQuitEvent event) {
-        GolfingInfo golfingInfo = golfers.get(event.getPlayer().getUniqueId());
+        playerDoneWithCurrentCourse(event.getPlayer());
+    }
+
+    private void playerDoneWithCurrentCourse(Player p) {
+        GolfingInfo golfingInfo = golfers.get(p.getUniqueId());
         if (golfingInfo != null) {
-            golfingInfo.getGolfball().remove();
-            golfingInfo.getCourse().playerQuit(event.getPlayer());
-            golfers.remove(event.getPlayer().getUniqueId());
+            Snowball ball = golfingInfo.getGolfball();
+            if (ball != null) {
+                ball.remove();
+            }
+            golfingInfo.getCourse().playerQuit(p);
+            golfers.remove(p.getUniqueId());
+            cleanUpAnyUnusedBalls(p);
+            p.getInventory().clear();
+            p.teleport(golfingInfo.getCourse().getEndingLocation());
             if (golfers.isEmpty()) {
                 golfballPhysicsTask.cancel();
             }
@@ -101,6 +178,13 @@ public class GolfingCourseManager implements Listener {
             .findFirst();
     }
 
+    private Optional<UUID> getPUuidFromGolfball(Snowball ball) {
+        return golfers.entrySet().stream()
+            .filter(e -> ball.equals(e.getValue().getGolfball()))
+            .map(Map.Entry::getKey)
+            .findFirst();
+    }
+
     private void startGolfBallPhysicsTask() {
         golfballPhysicsTask = new BukkitRunnable() {
             @Override
@@ -111,7 +195,6 @@ public class GolfingCourseManager implements Listener {
                     .filter(e -> e.getValue().getGolfball() != null)
                     .forEach(e -> {
                         if (!handleGolfBallPhysicsAndDecideIfWeShouldKeepBall(e)) {
-                            e.getValue().getGolfball().remove();
                             e.getValue().setGolfball(null);
                         }
                     });
@@ -155,6 +238,9 @@ public class GolfingCourseManager implements Listener {
             case MAGENTA_GLAZED_TERRACOTTA:
                 handleGlazedTerracotta(ball, block, vel);
                 break;
+            case WATER:
+                returnBallToLastLoc(ball);
+                break;
             default:
                 // Check if floating above slabs
                 if (isBottomSlab(block) && loc.getY() > block.getY() + 0.5)
@@ -164,6 +250,9 @@ public class GolfingCourseManager implements Listener {
 
                 // Slight friction
                 vel.multiply(getPlugin().config().getFriction());
+                if (vel.lengthSquared() < 0.0001) {
+                    vel.zero();
+                }
                 ball.setVelocity(vel);
                 break;
         }
@@ -185,7 +274,7 @@ public class GolfingCourseManager implements Listener {
         Bukkit.getScheduler().runTaskLater(getPlugin(), firework::detonate, 20);
 
         // Send message
-        int par = ball.getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER);
+        int par = ball.getPersistentDataContainer().get(getPlugin().strokesKey, INTEGER);
         Player p = Bukkit.getPlayer(golfer.getKey());
         String msg = getPlugin().config().scoreMsg(p.getName(), String.valueOf(golfer.getValue().getCourse().playersCurrentHole(golfer.getKey()) + 1), Integer.toString(par));
         p.sendMessage(msg);
@@ -195,7 +284,7 @@ public class GolfingCourseManager implements Listener {
             new HoleCompletedEvent(
                 Bukkit.getPlayer(golfer.getKey()),
                 golfer.getValue().getCourse(),
-                ball.getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER)
+                ball.getPersistentDataContainer().get(getPlugin().strokesKey, INTEGER)
             )
         );
         return true;
@@ -223,10 +312,28 @@ public class GolfingCourseManager implements Listener {
         ball.setVelocity(vel.multiply(9.0).add(newVel).multiply(0.1));
     }
 
+    private void cleanUpAnyUnusedBalls(Player golfer) {
+        for (Entity entity : golfer.getNearbyEntities(50, 50, 50)) {
+            if (entity instanceof Snowball ball && ball.getPersistentDataContainer().has(getPlugin().strokesKey, INTEGER)) {
+                Optional<GolfingInfo> maybeGolfingInfo = getGolfingInfoFromGolfball(ball);
+                if (maybeGolfingInfo.isEmpty()) {
+                    ball.remove();
+                }
+            }
+        }
+    }
+
     @Data
     @Builder
     public static class GolfingInfo {
         private final Course course;
         private Snowball golfball;
+
+        public void setGolfball(Snowball ball) {
+            if (golfball != null) {
+                golfball.remove();
+            }
+            golfball = ball;
+        }
     }
 }

@@ -8,6 +8,7 @@ import lombok.Getter;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class MiniGolfConfig {
     @Getter private Double friction;
     @Getter private Double sandFriction;
     private String scoreMsg;
+    private String courseCompletedMsg;
 
     public MiniGolfConfig(YamlConfiguration config) {
         originalConfig = loadOriginalConfig("config.yml");
@@ -39,6 +41,7 @@ public class MiniGolfConfig {
 
     private void loadConfig(YamlConfiguration config) {
         scoreMsg = config.getString("scoreMsg", originalConfig.getString("scoreMsg"));
+        courseCompletedMsg = config.getString("courseCompletedMsg", originalConfig.getString("courseCompletedMsg"));
         clubPowerMap = new HashMap<>();
         clubPowerMap.put(getPlugin().putterKey.getKey(), loadClubPower(config, getPlugin().putterKey.getKey()));
         clubPowerMap.put(getPlugin().wedgeKey.getKey(), loadClubPower(config, getPlugin().wedgeKey.getKey()));
@@ -93,8 +96,20 @@ public class MiniGolfConfig {
         saveCourse(course);
     }
 
+    public boolean deleteCourse(Course course) {
+        File file = new File(getPlugin().getDataFolder().getAbsolutePath() + File.separatorChar + courseDirectory, course.getName() + ".yml");
+        boolean wasSuccessful = file.delete();
+        courses = loadCourses();
+        return wasSuccessful;
+    }
+
     public void newHoleCreated(Course course, int index, Hole hole) {
         course.addHole(hole, index);
+        saveCourse(course);
+    }
+
+    public void removeHole(Course course, int holeToRemoveIndex) {
+        course.removeHole(holeToRemoveIndex);
         saveCourse(course);
     }
 
@@ -125,6 +140,14 @@ public class MiniGolfConfig {
     public String scoreMsg(String v1, String v2, String v3) {
         return ChatColor.translateAlternateColorCodes('&',
             scoreMsg
+                .replaceAll("&v1", v1)
+                .replaceAll("&v2", v2)
+                .replaceAll("&v3", v3));
+    }
+
+    public String courseCompletedMsg(String v1, String v2, String v3) {
+        return ChatColor.translateAlternateColorCodes('&',
+            courseCompletedMsg
                 .replaceAll("&v1", v1)
                 .replaceAll("&v2", v2)
                 .replaceAll("&v3", v3));
@@ -165,5 +188,20 @@ public class MiniGolfConfig {
         course.getHoles().get(holeIndex).setHoleLocY(holeLoc.getY());
         course.getHoles().get(holeIndex).setHoleLocZ(holeLoc.getZ());
         saveCourse(course);
+    }
+
+    public void setCourseCompletionLocation(Course course, Location completionLoc) {
+        course.setEndingLocX(completionLoc.getX());
+        course.setEndingLocY(completionLoc.getY());
+        course.setEndingLocZ(completionLoc.getZ());
+        course.setEndingLocYaw(completionLoc.getYaw());
+        course.setEndingLocPitch(completionLoc.getPitch());
+        saveCourse(course);
+    }
+
+    public void newCourseScoreRecorded(Course course, Player golfer, int score) {
+        if (course.playerGotNewPb(golfer, score)) {
+            saveCourse(course);
+        }
     }
 }

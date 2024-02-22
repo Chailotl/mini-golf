@@ -16,6 +16,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,19 +29,30 @@ import static com.chai.miniGolf.Main.logger;
 @Data
 public class Course {
     private String name;
-    private List<Hole> holes;
-    // TODO: Course Leaderboards
+    private String worldUuid;
+    private Double endingLocX;
+    private Double endingLocY;
+    private Double endingLocZ;
+    private Float endingLocYaw;
+    private Float endingLocPitch;
+    private Map<String, Score> leaderboards;
     @JsonIgnore
     private Map<UUID, Integer> playersAndTheirCurrentHole;
+    private List<Hole> holes;
 
-    private Course(String name, List<Hole> holes, Map<UUID, Integer> playersAndTheirCurrentHole) {
-        this.name = name;
-        this.holes = holes;
-        this.playersAndTheirCurrentHole = new HashMap<>();
-    }
-
-    public static Course newCourse(String name) {
-        return new Course(name, new ArrayList<>(), null);
+    public static Course newCourse(String name, Location currentLoc) {
+        return Course.builder()
+            .name(name)
+            .holes(new ArrayList<>())
+            .leaderboards(new LinkedHashMap<>())
+            .playersAndTheirCurrentHole(null)
+            .worldUuid(currentLoc.getWorld().getUID().toString())
+            .endingLocX(currentLoc.getX())
+            .endingLocY(currentLoc.getY())
+            .endingLocZ(currentLoc.getZ())
+            .endingLocYaw(currentLoc.getYaw())
+            .endingLocPitch(currentLoc.getPitch())
+            .build();
     }
 
     public void addHole(Hole hole, Integer index) {
@@ -48,33 +60,38 @@ public class Course {
     }
 
     public Snowball playerStartedCourse(Player p) {
-        playersAndTheirCurrentHole.put(p.getUniqueId(), -1);
+        playersAndTheirCurrentHole().put(p.getUniqueId(), -1);
         return playerMovingToNextHole(p);
     }
 
     @JsonIgnore
+    public Location getEndingLocation() {
+        return new Location(Bukkit.getWorld(UUID.fromString(worldUuid)), endingLocX, endingLocY, endingLocZ, endingLocYaw, endingLocPitch);
+    }
+
+    @JsonIgnore
     public Block getCurrentHoleCauldronBlock(UUID pUuid) {
-        return holes.get(playersAndTheirCurrentHole.get(pUuid)).getHoleBlock();
+        return holes.get(playersAndTheirCurrentHole().get(pUuid)).getHoleBlock();
     }
 
     public int playersCurrentHole(UUID pUuid) {
-        return playersAndTheirCurrentHole.get(pUuid);
+        return playersAndTheirCurrentHole().get(pUuid);
     }
 
     public void playerCompletedHole(Player p, int score) {
-        holes.get(playersAndTheirCurrentHole.get(p.getUniqueId())).playerFinishedHole(p, score);
+        holes.get(playersAndTheirCurrentHole().get(p.getUniqueId())).playerFinishedHole(p, score);
     }
 
     // Two separate things completing the hole and moving to the next hole so the player can watch the fireworks
     public Snowball playerMovingToNextHole(Player p) {
-        int nextHoleIndex = playersAndTheirCurrentHole.get(p.getUniqueId()) + 1;
+        int nextHoleIndex = playersAndTheirCurrentHole().get(p.getUniqueId()) + 1;
         if (nextHoleIndex >= holes.size()) {
             // Course Completed
             playerCompletedCourse(p);
             return null;
         }
         holes.get(nextHoleIndex).playerStartedPlayingHole(p);
-        playersAndTheirCurrentHole.put(p.getUniqueId(), nextHoleIndex);
+        playersAndTheirCurrentHole().put(p.getUniqueId(), nextHoleIndex);
         teleportPlayerToHoleStart(p, nextHoleIndex);
         return placeBallForPlayer(p, nextHoleIndex);
     }
@@ -88,7 +105,7 @@ public class Course {
     }
 
     public Snowball placeBallForPlayer(Player p, int holeIndex) {
-        Location loc = holes.get(holeIndex).getStartingLocation();
+        Location loc = holes.get(holeIndex).getBallStartingLocation();
         Snowball ball = (Snowball) p.getWorld().spawnEntity(loc, EntityType.SNOWBALL);
         ball.setGravity(false);
         PersistentDataContainer c = ball.getPersistentDataContainer();
@@ -108,16 +125,54 @@ public class Course {
             .reduce(0, Integer::sum);
     }
 
+    public int totalPar() {
+        return holes.stream()
+            .map(Hole::getPar)
+            .reduce(0, Integer::sum);
+    }
+
     public void playerCompletedCourse(Player p) {
-        System.out.printf("%s just finished %s with a score of %s%n", p.getName(), name, playerTotalScore(p));
         Bukkit.getPluginManager().callEvent(new CourseCompletedEvent(p, this, playerTotalScore(p)));
-        playersAndTheirCurrentHole.remove(p.getUniqueId());
+        playersAndTheirCurrentHole().remove(p.getUniqueId());
+    }
+
+    private Map<UUID, Integer> playersAndTheirCurrentHole() {
+        if (playersAndTheirCurrentHole == null) {
+            playersAndTheirCurrentHole = new HashMap<>();
+        }
+        return playersAndTheirCurrentHole;
+    }
+
+    private Map<String, Score> leaderboards() {
+        if (leaderboards == null) {
+            leaderboards = new HashMap<>();
+        }
+        return leaderboards;
+    }
+
+    public boolean playerGotNewPb(Player p, int totalScore) {
+        Score currentPb = leaderboards().get(p.getName());
+        int bestScore;
+        if (currentPb == null) {
+            bestScore = Integer.MAX_VALUE;
+        } else {
+            bestScore = currentPb.getScore();
+        }
+        if (totalScore < bestScore) {
+            leaderboards.put(p.getName(), new Score(totalScore, System.currentTimeMillis() / 1000));
+            return true;
+        }
+        return false;
     }
 
     public void playerQuit(Player p) {
         holes.stream()
             .filter(h -> h.playersScore(p) != null)
             .forEach(h -> h.playerDoneWithCourse(p));
-        playersAndTheirCurrentHole.remove(p.getUniqueId());
+        playersAndTheirCurrentHole().remove(p.getUniqueId());
+    }
+
+    public void removeHole(int holeToRemoveIndex) {
+        holes.remove(holeToRemoveIndex);
     }
 }

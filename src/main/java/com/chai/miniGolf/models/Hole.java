@@ -42,9 +42,9 @@ public class Hole {
             .startingLocZ(startingLoc.getZ())
             .startingLocYaw(startingLoc.getYaw())
             .startingLocPitch(startingLoc.getPitch())
-            .ballStartingLocX(startingLoc.getX())
-            .ballStartingLocY(startingLoc.getY())
-            .ballStartingLocZ(startingLoc.getZ())
+            .ballStartingLocX(ballStartingLoc.getX())
+            .ballStartingLocY(ballStartingLoc.getY())
+            .ballStartingLocZ(ballStartingLoc.getZ())
             .holeLocX(hole.getX())
             .holeLocY(hole.getY())
             .holeLocZ(hole.getZ())
@@ -54,6 +54,11 @@ public class Hole {
     @JsonIgnore
     public Location getStartingLocation() {
         return new Location(Bukkit.getWorld(UUID.fromString(worldUuid)), startingLocX, startingLocY, startingLocZ, startingLocYaw, startingLocPitch);
+    }
+
+    @JsonIgnore
+    public Location getBallStartingLocation() {
+        return new Location(Bukkit.getWorld(UUID.fromString(worldUuid)), ballStartingLocX, ballStartingLocY, ballStartingLocZ);
     }
 
     @JsonIgnore
@@ -71,11 +76,11 @@ public class Hole {
 
     public void playerDoneWithCourse(Player p) {
         playerScores().remove(p.getUniqueId());
-        System.out.println("Player scores: " + playerScores);
     }
 
     public boolean hasPlayerFinishedHole(Player p) {
-        return playerScores().get(p.getUniqueId()) > -1;
+        Integer score = playerScores().get(p.getUniqueId());
+        return score != null && score > -1;
     }
 
     public Integer playersScore(Player p) {

@@ -30,10 +30,12 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
     private static final Map<UUID, Course> playersEditingCourses = new HashMap<>();
     private static final Map<String, BiFunction<String[], Player, Boolean>> editActions = Map.of(
         "addhole", EditCourseCommand::addHole,
+        "removehole", EditCourseCommand::removeHole,
         "setpar", EditCourseCommand::setPar,
         "setstartinglocation", EditCourseCommand::setStartingLocation,
         "setstartingballlocation", EditCourseCommand::setStartingBallLocation,
         "setholelocation", EditCourseCommand::setHoleLocation,
+        "setcoursecompletionlocation", EditCourseCommand::setCourseCompletionLocation,
         "doneediting", EditCourseCommand::doneEditing
     );
 
@@ -97,7 +99,7 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
                 return editActions.keySet().stream().filter(a -> a.startsWith(args[0].toLowerCase())).toList();
             } else if (args.length == 2 && "addhole".equals(args[0])) {
                 return IntStream.range(0, course.getHoles().size()+1).boxed().map(String::valueOf).toList();
-            } else if (args.length == 2 && List.of("setpar", "setstartinglocation", "setholelocation").contains(args[0]) && !course.getHoles().isEmpty()) {
+            } else if (args.length == 2 && List.of("setpar", "setstartinglocation", "setholelocation", "setstartingballlocation", "removehole").contains(args[0]) && !course.getHoles().isEmpty()) {
                 return IntStream.range(0, course.getHoles().size()).boxed().map(String::valueOf).toList();
             }
         }
@@ -121,6 +123,27 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(String.format("%s[MiniGolf] Adding hole at index %s, any holes behind will be pushed back an index%s", ChatColor.WHITE, newHoleIndex, ChatColor.RESET));
         Location startingLoc = sender.getLocation();
         getPlugin().config().newHoleCreated(playersEditingCourses.get(sender.getUniqueId()), newHoleIndex, Hole.newHole(1, startingLoc, startingLoc, startingLoc));
+        return true;
+    }
+
+    private static Boolean removeHole(String[] args, Player sender) {
+        if (args.length == 0) {
+            sender.sendMessage(String.format("%s[MiniGolf] You must provide a hole index to be removed%s", ChatColor.WHITE, ChatColor.RESET));
+            return true;
+        }
+        int holeToRemoveIndex;
+        try {
+            holeToRemoveIndex = Integer.parseInt(args[0]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(ChatColor.WHITE + "[MiniGolf]" + ChatColor.RED + args[0] + " is not a valid Hole index.");
+            return true;
+        }
+        if (holeToRemoveIndex >= playersEditingCourses.get(sender.getUniqueId()).getHoles().size()) {
+            sender.sendMessage(String.format("%s[MiniGolf]%s There are only %s holes, you cannot remove a hole with index %s%s", ChatColor.WHITE, ChatColor.RED, playersEditingCourses.get(sender.getUniqueId()).getHoles().size(), holeToRemoveIndex, ChatColor.RESET));
+            return true;
+        }
+        sender.sendMessage(String.format("%s[MiniGolf] remove hole at index %s, any holes behind will be pulled forward an index%s", ChatColor.WHITE, holeToRemoveIndex, ChatColor.RESET));
+        getPlugin().config().removeHole(playersEditingCourses.get(sender.getUniqueId()), holeToRemoveIndex);
         return true;
     }
 
@@ -168,6 +191,14 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
         Location startingLoc = sender.getLocation();
         sender.sendMessage(String.format("%s[MiniGolf] Setting Starting Location for hole %s to your current location%s", ChatColor.WHITE, holeIndex, ChatColor.RESET));
         getPlugin().config().setStartingLocation(course, holeIndex, startingLoc);
+        return true;
+    }
+
+    private static Boolean setCourseCompletionLocation(String[] args, Player sender) {
+        Course course = playersEditingCourses.get(sender.getUniqueId());
+        Location completionLoc = sender.getLocation();
+        sender.sendMessage(String.format("%s[MiniGolf] Setting Course Completion Location to your current location%s", ChatColor.WHITE, ChatColor.RESET));
+        getPlugin().config().setCourseCompletionLocation(course, completionLoc);
         return true;
     }
 

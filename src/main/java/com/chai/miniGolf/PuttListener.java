@@ -34,8 +34,6 @@ public class PuttListener implements Listener {
 		}
 		Player p = event.getPlayer();
 		World world = p.getWorld();
-		Action act = event.getAction();
-		Block block = event.getClickedBlock();
 		ItemMeta meta = item.getItemMeta();
 		boolean putter = ShortUtils.hasKey(meta, getPlugin().putterKey);
 		boolean iron = ShortUtils.hasKey(meta, getPlugin().ironKey);
