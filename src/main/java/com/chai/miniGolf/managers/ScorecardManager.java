@@ -36,16 +36,49 @@ public class ScorecardManager implements Listener {
         }
         int numHoles = golferInfo.getCourse().getHoles().size();
         int numRows = numHoles % 9 == 0 ? numHoles / 9 : numHoles / 9 + 1;
-        Inventory scorecardInv = Bukkit.createInventory(null, numRows * 9, "Yard Golf - " + golferInfo.getCourse().getName());
+        int currentScore = golferInfo.getCourse().playerTotalScore(event.getPlayer());
+        GolfingCourseManager.GolfingInfo golfingInfo = getPlugin().golfingCourseManager().getGolfingInfo(event.getPlayer());
+        if (golfingInfo != null && golfingInfo.getGolfball() != null) {
+            currentScore += golfingInfo.getGolfball().getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER);
+        }
+        Inventory scorecardInv = Bukkit.createInventory(null, (numRows+1) * 9, String.format("Yard Golf - %s", golferInfo.getCourse().getName()));
+        scorecardInv.setItem(3, createCourseParItem(golfingInfo.getCourse().totalPar()));
+        scorecardInv.setItem(5, createCurrentScoreItem(currentScore));
+        int invSpot = 9;
         for (Hole hole : golferInfo.getCourse().getHoles()) {
-            if (!hole.hasPlayerFinishedHole(event.getPlayer())) {
-                continue;
+            if (!hole.hasPlayerFinishedHole(event.getPlayer()) && hole.playersScore(event.getPlayer()) != null) {
+                if (golfingInfo != null && golfingInfo.getGolfball() != null) {
+                    int score = golfingInfo.getGolfball().getPersistentDataContainer().get(getPlugin().strokesKey, PersistentDataType.INTEGER);
+                    ItemStack holeItem = createInProgressHoleItem(hole, score);
+                    scorecardInv.setItem(invSpot, holeItem);
+                    invSpot++;
+                }
+            } else if (hole.hasPlayerFinishedHole(event.getPlayer())) {
+                int score = hole.playersScore(event.getPlayer());
+                ItemStack holeItem = createCompletedHoleItem(hole, score);
+                scorecardInv.setItem(invSpot, holeItem);
+                invSpot++;
             }
-            int score = hole.playersScore(event.getPlayer());
-            ItemStack holeItem = createHoleItem(hole, score);
-            scorecardInv.addItem(holeItem);
         }
         event.getPlayer().openInventory(scorecardInv);
+    }
+
+    private ItemStack createCurrentScoreItem(int currentScore) {
+        ItemStack holeItem = new ItemStack(Material.SNOWBALL);
+        ItemMeta meta = holeItem.getItemMeta();
+        meta.setDisplayName(ChatColor.WHITE + "Your Current Score: " + currentScore);
+        meta.getPersistentDataContainer().set(RANDOM_UUID_KEY, PersistentDataType.STRING, UUID.randomUUID().toString());
+        holeItem.setItemMeta(meta);
+        return holeItem;
+    }
+
+    private ItemStack createCourseParItem(int par) {
+        ItemStack holeItem = new ItemStack(Material.SNOWBALL);
+        ItemMeta meta = holeItem.getItemMeta();
+        meta.setDisplayName(ChatColor.WHITE + "Course Par: " + par);
+        meta.getPersistentDataContainer().set(RANDOM_UUID_KEY, PersistentDataType.STRING, UUID.randomUUID().toString());
+        holeItem.setItemMeta(meta);
+        return holeItem;
     }
 
     @EventHandler
@@ -55,7 +88,17 @@ public class ScorecardManager implements Listener {
         }
     }
 
-    private ItemStack createHoleItem(Hole hole, int score) {
+    private ItemStack createInProgressHoleItem(Hole hole, int score) {
+        ItemStack holeItem = new ItemStack(Material.FEATHER);
+        ItemMeta meta = holeItem.getItemMeta();
+        meta.setDisplayName(ChatColor.WHITE + "(In Progress)");
+        meta.setLore(List.of(ChatColor.WHITE + "Par: " + hole.getPar(),ChatColor.WHITE + "Your score: " + score));
+        meta.getPersistentDataContainer().set(RANDOM_UUID_KEY, PersistentDataType.STRING, UUID.randomUUID().toString());
+        holeItem.setItemMeta(meta);
+        return holeItem;
+    }
+
+    private ItemStack createCompletedHoleItem(Hole hole, int score) {
         Material holeMaterial;
         String holeResult;
         if (score == 1) {
@@ -86,7 +129,7 @@ public class ScorecardManager implements Listener {
         ItemStack holeItem = new ItemStack(holeMaterial);
         ItemMeta meta = holeItem.getItemMeta();
         meta.setDisplayName(holeResult);
-        meta.setLore(List.of("Par: " + hole.getPar(), "Your score: " + score));
+        meta.setLore(List.of(ChatColor.WHITE + "Par: " + hole.getPar(),ChatColor.WHITE + "Your score: " + score));
         meta.getPersistentDataContainer().set(RANDOM_UUID_KEY, PersistentDataType.STRING, UUID.randomUUID().toString());
         holeItem.setItemMeta(meta);
         return holeItem;
