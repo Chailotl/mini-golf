@@ -57,9 +57,11 @@ public class ProjectileListener implements Listener
 
 			// Par
 			int par = c.get(plugin.strokesKey, PersistentDataType.INTEGER);
+			String owner = c.get(plugin.ownerNameKey, PersistentDataType.STRING);
 			PersistentDataContainer b = ball.getPersistentDataContainer();
 			b.set(plugin.strokesKey, PersistentDataType.INTEGER, par);
-			ball.setCustomName("Strokes " + par);
+			b.set(plugin.ownerNameKey, PersistentDataType.STRING, owner);
+			ball.setCustomName(owner + " - " + par);
 			ball.setCustomNameVisible(true);
 
 			// Last pos

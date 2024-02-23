@@ -49,6 +49,7 @@ public class Main extends JavaPlugin {
 	public final NamespacedKey quitItemKey = new NamespacedKey(this, "quit_item");
 
 	public final NamespacedKey strokesKey = new NamespacedKey(this, "strokesKey");
+	public final NamespacedKey ownerNameKey = new NamespacedKey(this, "ownerNameKey");
 	public final NamespacedKey xKey = new NamespacedKey(this, "x");
 	public final NamespacedKey yKey = new NamespacedKey(this, "y");
 	public final NamespacedKey zKey = new NamespacedKey(this, "z");

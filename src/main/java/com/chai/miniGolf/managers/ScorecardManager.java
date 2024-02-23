@@ -4,6 +4,7 @@ import com.chai.miniGolf.models.Hole;
 import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.event.EventHandler;
@@ -99,34 +100,75 @@ public class ScorecardManager implements Listener {
         return holeItem;
     }
 
-    private ItemStack createCompletedHoleItem(Hole hole, int score) {
-        Material holeMaterial;
+    public static String holeResultString(Hole hole, int score) {
         String holeResult;
         if (score == 1) {
-            holeMaterial = Material.LIGHT_BLUE_CONCRETE;
             holeResult = String.format("%sHole in one!%s", ChatColor.AQUA, ChatColor.RESET);
         } else if (score < hole.getPar() - 2) {
-            holeMaterial = Material.CYAN_CONCRETE;
             holeResult = String.format("%sEagle+!%s", ChatColor.GREEN, ChatColor.RESET);
         }  else if (score == hole.getPar() - 2) {
-            holeMaterial = Material.LIME_CONCRETE;
             holeResult = String.format("%sEagle!%s", ChatColor.GREEN, ChatColor.RESET);
         } else if (score == hole.getPar() - 1) {
-            holeMaterial = Material.GREEN_CONCRETE;
             holeResult = String.format("%sBirdie!%s", ChatColor.DARK_GREEN, ChatColor.RESET);
         } else if (score == hole.getPar()) {
-            holeMaterial = Material.WHITE_CONCRETE;
             holeResult = String.format("%sPar%s", ChatColor.WHITE, ChatColor.RESET);
         } else if (score == hole.getPar() + 1) {
-            holeMaterial = Material.PINK_CONCRETE;
             holeResult = String.format("%sBogey%s", ChatColor.RED, ChatColor.RESET);
         } else if (score == hole.getPar() + 2) {
-            holeMaterial = Material.RED_CONCRETE;
             holeResult = String.format("%sDouble Bogey%s", ChatColor.DARK_RED, ChatColor.RESET);
         } else {
-            holeMaterial = Material.BROWN_CONCRETE;
             holeResult = String.format("%sDouble Bogey+%s", ChatColor.DARK_GRAY, ChatColor.RESET);
         }
+        return holeResult;
+    }
+
+    public static Color holeResultColor(Hole hole, int score) {
+        Color holeResultColor;
+        if (score == 1) {
+            holeResultColor = Color.AQUA;
+        } else if (score < hole.getPar() - 2) {
+            holeResultColor = Color.LIME;
+        }  else if (score == hole.getPar() - 2) {
+            holeResultColor = Color.LIME;
+        } else if (score == hole.getPar() - 1) {
+            holeResultColor = Color.GREEN;
+        } else if (score == hole.getPar()) {
+            holeResultColor = Color.WHITE;
+        } else if (score == hole.getPar() + 1) {
+            holeResultColor = Color.FUCHSIA;
+        } else if (score == hole.getPar() + 2) {
+            holeResultColor = Color.RED;
+        } else {
+            holeResultColor = Color.BLACK;
+        }
+        return holeResultColor;
+    }
+
+    public static Material holeResultMaterial(Hole hole, int score) {
+        Material holeMaterial;
+        if (score == 1) {
+            holeMaterial = Material.LIGHT_BLUE_CONCRETE;
+        } else if (score < hole.getPar() - 2) {
+            holeMaterial = Material.CYAN_CONCRETE;
+        }  else if (score == hole.getPar() - 2) {
+            holeMaterial = Material.LIME_CONCRETE;
+        } else if (score == hole.getPar() - 1) {
+            holeMaterial = Material.GREEN_CONCRETE;
+        } else if (score == hole.getPar()) {
+            holeMaterial = Material.WHITE_CONCRETE;
+        } else if (score == hole.getPar() + 1) {
+            holeMaterial = Material.PINK_CONCRETE;
+        } else if (score == hole.getPar() + 2) {
+            holeMaterial = Material.RED_CONCRETE;
+        } else {
+            holeMaterial = Material.BROWN_CONCRETE;
+        }
+        return holeMaterial;
+    }
+
+    private ItemStack createCompletedHoleItem(Hole hole, int score) {
+        Material holeMaterial = holeResultMaterial(hole, score);
+        String holeResult = holeResultString(hole, score);
         ItemStack holeItem = new ItemStack(holeMaterial);
         ItemMeta meta = holeItem.getItemMeta();
         meta.setDisplayName(holeResult);

@@ -8,9 +8,10 @@ import com.chai.miniGolf.models.Course;
 import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import lombok.Builder;
 import lombok.Data;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -24,6 +25,9 @@ import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.meta.FireworkMeta;
@@ -32,15 +36,20 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static com.chai.miniGolf.Main.getPlugin;
+import static com.chai.miniGolf.managers.ScorecardManager.holeResultColor;
+import static com.chai.miniGolf.managers.ScorecardManager.holeResultString;
 import static com.chai.miniGolf.utils.SharedMethods.isBottomSlab;
+import static org.bukkit.ChatColor.RESET;
 import static org.bukkit.persistence.PersistentDataType.DOUBLE;
 import static org.bukkit.persistence.PersistentDataType.INTEGER;
+import static org.bukkit.persistence.PersistentDataType.STRING;
 
 public class GolfingCourseManager implements Listener {
     private final Map<UUID, GolfingInfo> golfers = new HashMap<>();
@@ -100,6 +109,27 @@ public class GolfingCourseManager implements Listener {
         }
     }
 
+    @EventHandler
+    private void onPlayerBlockBreak(BlockBreakEvent event) {
+        if (golfers.containsKey(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    private void onPlayerDropItem(PlayerDropItemEvent event) {
+        if (golfers.containsKey(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    private void onFireworkDamage(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Firework && golfers.containsKey(event.getEntity().getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
     private void returnBallToLastLoc(UUID pUuid) {
         GolfingInfo golfingInfo = golfers.get(pUuid);
         if (golfingInfo == null || golfingInfo.getGolfball() == null) {
@@ -110,8 +140,10 @@ public class GolfingCourseManager implements Listener {
         }
         PersistentDataContainer c = golfingInfo.getGolfball().getPersistentDataContainer();
         int strokes = c.get(getPlugin().strokesKey, INTEGER) + 1;
+        String owner = c.get(getPlugin().ownerNameKey, STRING);
         c.set(getPlugin().strokesKey, INTEGER, strokes);
-        golfingInfo.getGolfball().setCustomName("Strokes: " + strokes);
+        c.set(getPlugin().ownerNameKey, STRING, owner);
+        golfingInfo.getGolfball().setCustomName(owner + " - " + strokes);
         golfingInfo.getGolfball().setVelocity(new Vector(0, 0, 0));
         golfingInfo.getGolfball().teleport(new Location(golfingInfo.getGolfball().getWorld(), c.get(getPlugin().xKey, DOUBLE), c.get(getPlugin().yKey, DOUBLE), c.get(getPlugin().zKey, DOUBLE)));
         golfingInfo.getGolfball().setGravity(false);
@@ -265,25 +297,29 @@ public class GolfingCourseManager implements Listener {
             return false;
         }
 
-        // Spawn firework
-        Firework firework = (Firework) ball.getWorld().spawnEntity(ball.getLocation(), EntityType.FIREWORK);
-        FireworkMeta meta = firework.getFireworkMeta();
-        meta.setPower(1);
-        meta.addEffect(FireworkEffect.builder().withColor(Color.WHITE).with(FireworkEffect.Type.BALL).build());
-        firework.setFireworkMeta(meta);
-        Bukkit.getScheduler().runTaskLater(getPlugin(), firework::detonate, 20);
+        Course course = golfer.getValue().getCourse();
 
         // Send message
         int par = ball.getPersistentDataContainer().get(getPlugin().strokesKey, INTEGER);
         Player p = Bukkit.getPlayer(golfer.getKey());
-        String msg = getPlugin().config().scoreMsg(p.getName(), String.valueOf(golfer.getValue().getCourse().playersCurrentHole(golfer.getKey()) + 1), Integer.toString(par));
+        String msg = getPlugin().config().scoreMsg(p.getName(), String.valueOf(course.playersCurrentHole(golfer.getKey()) + 1), Integer.toString(par));
         p.sendMessage(msg);
+        p.showTitle(Title.title(Component.text(holeResultString(course.getHoles().get(course.playersCurrentHole(golfer.getKey())), par)), Component.empty(), Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ZERO)));
+
+        // Spawn firework
+        Firework firework = (Firework) ball.getWorld().spawnEntity(ball.getLocation(), EntityType.FIREWORK);
+        FireworkMeta meta = firework.getFireworkMeta();
+        meta.setPower(1);
+        meta.addEffect(FireworkEffect.builder().withColor(holeResultColor(course.getHoles().get(course.playersCurrentHole(golfer.getKey())), par)).with(FireworkEffect.Type.BALL).build());
+        firework.setFireworkMeta(meta);
+        Bukkit.getScheduler().runTaskLater(getPlugin(), firework::detonate, 20);
+
 
         // Let any listeners know that a hole was just completed
         Bukkit.getPluginManager().callEvent(
             new HoleCompletedEvent(
                 Bukkit.getPlayer(golfer.getKey()),
-                golfer.getValue().getCourse(),
+                course,
                 ball.getPersistentDataContainer().get(getPlugin().strokesKey, INTEGER)
             )
         );

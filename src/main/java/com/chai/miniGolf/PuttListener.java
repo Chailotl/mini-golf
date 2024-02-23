@@ -82,8 +82,9 @@ public class PuttListener implements Listener {
 			// Update strokes
 			PersistentDataContainer c = ball.getPersistentDataContainer();
 			int strokes = c.get(getPlugin().strokesKey, PersistentDataType.INTEGER) + 1;
+			String owner = c.get(getPlugin().ownerNameKey, PersistentDataType.STRING);
 			c.set(getPlugin().strokesKey, PersistentDataType.INTEGER, strokes);
-			ball.setCustomName("Strokes: " + strokes);
+			ball.setCustomName(owner + " - " + strokes);
 
 			// Update last pos
 			Location lastPos = ball.getLocation();
