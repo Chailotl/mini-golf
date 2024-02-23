@@ -70,7 +70,9 @@ public class MiniGolfConfig {
     }
 
     private List<Course> loadCourses() {
-        return Arrays.stream(new File(getPlugin().getDataFolder().getAbsolutePath() + File.separatorChar + courseDirectory).listFiles())
+        File courseDir = new File(getPlugin().getDataFolder().getAbsolutePath() + File.separatorChar + courseDirectory);
+        courseDir.mkdir();
+        return Arrays.stream(courseDir.listFiles())
             .filter(f -> f.getName().endsWith(".yml"))
             .map(f -> {
                 try {

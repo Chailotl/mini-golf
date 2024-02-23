@@ -10,19 +10,25 @@ commands:
   mgcreatecourse:
     description: Create a Mini Golf course
     usage: /mgcreatecourse <course_name>
+    permission: mgop
   mgdeletecourse:
     description: Delete a Mini Golf course
     usage: /mgdeletecourse <course_name>
+    permission: mgop
   mgedit:
     description: Edit Mini Golf courses
     usage: /mgedit <course_name:or_edit_action>
+    permission: mgop
   mginfo:
     description: Mini golf plugin info
+    permission: mgop
   mgplay:
     description: Play a Mini golf course
     usage: /mgplay <course_name> <optional:player_name>
+    permission: mgop
   mgreload:
     description: Reload the configs
+    permission: mgop
 
 permissions:
   mgop:
