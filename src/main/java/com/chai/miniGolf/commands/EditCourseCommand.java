@@ -101,6 +101,8 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
                 return IntStream.range(0, course.getHoles().size()+1).boxed().map(String::valueOf).toList();
             } else if (args.length == 2 && List.of("setpar", "setstartinglocation", "setholelocation", "setstartingballlocation", "removehole").contains(args[0]) && !course.getHoles().isEmpty()) {
                 return IntStream.range(0, course.getHoles().size()).boxed().map(String::valueOf).toList();
+            } else if (args.length == 3 && "setstartingballlocation".equals(args[0]) && !course.getHoles().isEmpty()) {
+                return List.of("centered");
             }
         }
         return List.of();
@@ -221,6 +223,12 @@ public class EditCourseCommand implements CommandExecutor, TabCompleter {
         }
         Location startingBallLoc = sender.getLocation();
         sender.sendMessage(String.format("%s[MiniGolf] Setting Starting ball Location for hole %s to your current location%s", ChatColor.WHITE, holeIndex, ChatColor.RESET));
+        if (args.length > 1) {
+            if ("centered".equals(args[1])) {
+                startingBallLoc.setX(Math.ceil(startingBallLoc.getX())-0.5);
+                startingBallLoc.setZ(Math.ceil(startingBallLoc.getZ())-0.5);
+            }
+        }
         getPlugin().config().setBallStartingLocation(course, holeIndex, startingBallLoc);
         return true;
     }

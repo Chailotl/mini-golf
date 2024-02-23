@@ -148,7 +148,7 @@ public class Main extends JavaPlugin {
 		whistle.setItemMeta(meta);
 
 		// Scorecard item
-		scorecard = new ItemStack(Material.PAPER);
+		scorecard = new ItemStack(Material.BOOK);
 		meta = scorecard.getItemMeta();
 		meta.setDisplayName(ChatColor.RESET + "Scorecard");
 		meta.setLore(List.of(ChatColor.DARK_GRAY + "Use this item to", ChatColor.DARK_GRAY + "view your current score"));

@@ -60,6 +60,7 @@ public class ScorecardManager implements Listener {
                 invSpot++;
             }
         }
+        event.setCancelled(true);
         event.getPlayer().openInventory(scorecardInv);
     }
 
