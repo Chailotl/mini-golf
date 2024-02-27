@@ -26,13 +26,13 @@ public class UnloadListener implements Listener
 			{
 				// Check if golf ball
 				PersistentDataContainer c = ent.getPersistentDataContainer();
-				if (!c.has(plugin.parKey, PersistentDataType.INTEGER))
+				if (!c.has(plugin.strokesKey, PersistentDataType.INTEGER))
 				{
 					return;
 				}
 
 				// Drop golf ball
-				ent.getWorld().dropItem(ent.getLocation(), plugin.golfBall());
+				ent.getWorld().dropItem(ent.getLocation(), plugin.golfBallItemStack());
 				ent.remove();
 			}
 		}
