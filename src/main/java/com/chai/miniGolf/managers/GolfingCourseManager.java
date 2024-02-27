@@ -8,6 +8,7 @@ import com.chai.miniGolf.models.Course;
 import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -30,6 +31,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -68,6 +70,7 @@ public class GolfingCourseManager implements Listener {
             GolfingInfo.builder()
                 .course(event.course())
                 .golfball(event.course().playerStartedCourse(event.golfer()))
+                .invBeforeGolfing(event.golfer().getInventory().getContents().clone())
                 .build()
             );
         event.golfer().getInventory().clear();
@@ -192,7 +195,7 @@ public class GolfingCourseManager implements Listener {
             golfingInfo.getCourse().playerQuit(p);
             golfers.remove(p.getUniqueId());
             cleanUpAnyUnusedBalls(p);
-            p.getInventory().clear();
+            p.getInventory().setContents(golfingInfo.getInvBeforeGolfing());
             p.teleport(golfingInfo.getCourse().getEndingLocation());
             if (golfers.isEmpty()) {
                 golfballPhysicsTask.cancel();
@@ -364,6 +367,7 @@ public class GolfingCourseManager implements Listener {
     public static class GolfingInfo {
         private final Course course;
         private Snowball golfball;
+        private ItemStack[] invBeforeGolfing;
 
         public void setGolfball(Snowball ball) {
             if (golfball != null) {
