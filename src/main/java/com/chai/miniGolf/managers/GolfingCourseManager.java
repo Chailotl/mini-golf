@@ -4,11 +4,11 @@ import com.chai.miniGolf.events.CourseCompletedEvent;
 import com.chai.miniGolf.events.CoursePlayRequestedEvent;
 import com.chai.miniGolf.events.HoleCompletedEvent;
 import com.chai.miniGolf.events.NextHoleRequestedEvent;
+import com.chai.miniGolf.events.PlayerDoneGolfingEvent;
 import com.chai.miniGolf.models.Course;
 import com.chai.miniGolf.utils.ShortUtils.ShortUtils;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -28,12 +28,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
@@ -43,12 +45,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 
 import static com.chai.miniGolf.Main.getPlugin;
 import static com.chai.miniGolf.managers.ScorecardManager.holeResultColor;
 import static com.chai.miniGolf.managers.ScorecardManager.holeResultString;
 import static com.chai.miniGolf.utils.SharedMethods.isBottomSlab;
-import static org.bukkit.ChatColor.RESET;
 import static org.bukkit.persistence.PersistentDataType.DOUBLE;
 import static org.bukkit.persistence.PersistentDataType.INTEGER;
 import static org.bukkit.persistence.PersistentDataType.STRING;
@@ -71,6 +73,7 @@ public class GolfingCourseManager implements Listener {
                 .course(event.course())
                 .golfball(event.course().playerStartedCourse(event.golfer()))
                 .invBeforeGolfing(event.golfer().getInventory().getContents().clone())
+                .hidingOthers(false)
                 .build()
             );
         event.golfer().getInventory().clear();
@@ -80,6 +83,7 @@ public class GolfingCourseManager implements Listener {
         event.golfer().getInventory().setItem(4, getPlugin().whistleItemStack());
         event.golfer().getInventory().setItem(5, getPlugin().nextHoleItemItemStack());
         event.golfer().getInventory().setItem(6, getPlugin().scorecardItemStack());
+        event.golfer().getInventory().setItem(7, getPlugin().hideOthersItemItemStack());
         event.golfer().getInventory().setItem(8, getPlugin().quitItemItemStack());
         cleanUpAnyUnusedBalls(event.golfer());
     }
@@ -103,12 +107,56 @@ public class GolfingCourseManager implements Listener {
             event.getPlayer().setCooldown(getPlugin().nextHoleItemItemStack().getType(), 10);
             event.setCancelled(true);
         } else if (ShortUtils.hasKey(event.getItem().getItemMeta(), getPlugin().quitItemKey)) {
-            playerDoneWithCurrentCourse(event.getPlayer());
+            Bukkit.getPluginManager().callEvent(new PlayerDoneGolfingEvent(event.getPlayer()));
             event.setCancelled(true);
         } else if (ShortUtils.hasKey(event.getItem().getItemMeta(), getPlugin().whistleKey)) {
             event.getPlayer().getWorld().playSound(event.getPlayer().getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.9f, 1.9f);
             returnBallToLastLoc(event.getPlayer().getUniqueId());
             event.setCancelled(true);
+        } else if (ShortUtils.hasKey(event.getItem().getItemMeta(), getPlugin().hideOthersItemKey) && event.getPlayer().getCooldown(getPlugin().hideOthersItemItemStack().getType()) == 0) {
+            toggleVisibility(event.getPlayer());
+            event.getPlayer().setCooldown(getPlugin().nextHoleItemItemStack().getType(), 1);
+            event.setCancelled(true);
+        }
+    }
+
+    private void toggleVisibility(Player p) {
+        GolfingInfo golfingInfo = golfers.get(p.getUniqueId());
+        if (golfingInfo == null) {
+            return;
+        }
+        golfingInfo.setHidingOthers(!golfingInfo.isHidingOthers());
+        BiConsumer<Plugin, Player> toggleVisibilityPlayerMethod = p::showPlayer;
+        BiConsumer<Plugin, Entity> toggleVisibilityEntityMethod = p::showEntity;
+        if (golfingInfo.isHidingOthers()) {
+            toggleVisibilityPlayerMethod = p::hidePlayer;
+            toggleVisibilityEntityMethod = p::hideEntity;
+        }
+        for (Map.Entry<UUID, GolfingInfo> entry : golfers.entrySet()) {
+            if (entry.getKey().equals(p.getUniqueId())) {
+                continue;
+            }
+            Player otherGolfer = Bukkit.getPlayer(entry.getKey());
+            Snowball otherGolfball = entry.getValue().getGolfball();
+            if (otherGolfer != null) {
+                toggleVisibilityPlayerMethod.accept(getPlugin(), otherGolfer);
+            }
+            if (otherGolfball != null) {
+                toggleVisibilityEntityMethod.accept(getPlugin(), otherGolfball);
+            }
+        }
+    }
+
+    @EventHandler
+    private void onGolfballSpawn(EntitySpawnEvent event) {
+        if (event.getEntity() instanceof Snowball ball) {
+            String owner = ball.getPersistentDataContainer().get(getPlugin().ownerNameKey, STRING);
+            for (Map.Entry<UUID, GolfingInfo> entry : golfers.entrySet()) {
+                Player otherGolfer = Bukkit.getPlayer(entry.getKey());
+                if (otherGolfer != null && !otherGolfer.getName().equals(owner) && entry.getValue().isHidingOthers()) {
+                    otherGolfer.hideEntity(getPlugin(), ball);
+                }
+            }
         }
     }
 
@@ -177,15 +225,17 @@ public class GolfingCourseManager implements Listener {
     private void courseCompleted(CourseCompletedEvent event) {
         ChatColor scoreColor = event.totalScore() == event.course().totalPar() ? ChatColor.WHITE : event.totalScore() < event.course().totalPar() ? ChatColor.GREEN : ChatColor.RED;
         event.golfer().sendMessage(getPlugin().config().courseCompletedMsg(event.course().getName(), String.valueOf(event.course().totalPar()), String.format("%s%s", scoreColor, event.totalScore())));
-        playerDoneWithCurrentCourse(event.golfer());
+        Bukkit.getPluginManager().callEvent(new PlayerDoneGolfingEvent(event.golfer()));
     }
 
     @EventHandler
     private void onPlayerQuit(PlayerQuitEvent event) {
-        playerDoneWithCurrentCourse(event.getPlayer());
+        Bukkit.getPluginManager().callEvent(new PlayerDoneGolfingEvent(event.getPlayer()));
     }
 
-    private void playerDoneWithCurrentCourse(Player p) {
+    @EventHandler
+    private void playerDoneWithCurrentCourse(PlayerDoneGolfingEvent event) {
+        Player p = event.golfer();
         GolfingInfo golfingInfo = golfers.get(p.getUniqueId());
         if (golfingInfo != null) {
             Snowball ball = golfingInfo.getGolfball();
@@ -368,6 +418,7 @@ public class GolfingCourseManager implements Listener {
         private final Course course;
         private Snowball golfball;
         private ItemStack[] invBeforeGolfing;
+        private boolean hidingOthers;
 
         public void setGolfball(Snowball ball) {
             if (golfball != null) {

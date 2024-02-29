@@ -46,6 +46,7 @@ public class Main extends JavaPlugin {
 	public final NamespacedKey whistleKey = new NamespacedKey(this, "return_whistle");
 	public final NamespacedKey scorecardKey = new NamespacedKey(this, "scorecard");
 	public final NamespacedKey nextHoleItemKey = new NamespacedKey(this, "next_hole_item");
+	public final NamespacedKey hideOthersItemKey = new NamespacedKey(this, "hide_others_item");
 	public final NamespacedKey quitItemKey = new NamespacedKey(this, "quit_item");
 
 	public final NamespacedKey strokesKey = new NamespacedKey(this, "strokesKey");
@@ -69,6 +70,7 @@ public class Main extends JavaPlugin {
 	private ItemStack whistle;
 	private ItemStack scorecard;
 	private ItemStack nextHoleItem;
+	private ItemStack hideOthersItem;
 	private ItemStack quitItem;
 
 	// Managers
@@ -164,6 +166,14 @@ public class Main extends JavaPlugin {
 		ShortUtils.addKey(meta, nextHoleItemKey);
 		nextHoleItem.setItemMeta(meta);
 
+		// Next Hole Item
+		hideOthersItem = new ItemStack(Material.LIME_DYE);
+		meta = hideOthersItem.getItemMeta();
+		meta.setDisplayName(ChatColor.RESET + "Toggle Visibility");
+		meta.setLore(List.of(ChatColor.DARK_GRAY + "Use this item to", ChatColor.DARK_GRAY + "hide or reveal other players"));
+		ShortUtils.addKey(meta, hideOthersItemKey);
+		hideOthersItem.setItemMeta(meta);
+
 		// Quit Item
 		quitItem = new ItemStack(Material.RED_BED);
 		meta = quitItem.getItemMeta();
@@ -238,6 +248,10 @@ public class Main extends JavaPlugin {
 
 	public ItemStack nextHoleItemItemStack() {
 		return nextHoleItem;
+	}
+
+	public ItemStack hideOthersItemItemStack() {
+		return hideOthersItem;
 	}
 
 	public ItemStack quitItemItemStack() {
